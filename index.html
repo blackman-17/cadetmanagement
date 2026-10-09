@@ -89,7 +89,7 @@
       <!-- Action & Event Controls -->
       <div class="flex items-center gap-2">
         <div id="accessStatus" class="hidden sm:block text-[10px] text-slate-400 max-w-[130px] truncate" title="Public read-only access">Public view</div>
-        <button id="authButton" onclick="app.openAuthModal()" class="px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 rounded-xl">Senior Login</button>
+        <button id="authButton" onclick="app.openAuthModal()" class="px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 rounded-xl transition-all">Senior Login</button>
         <div class="relative">
           <select id="eventSelect" onchange="app.switchEvent(this.value)" class="bg-slate-800 border border-slate-700 hover:border-slate-600 text-xs sm:text-sm font-semibold rounded-xl pl-3 pr-8 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 max-w-[145px] sm:max-w-[210px] truncate cursor-pointer appearance-none transition-colors">
             <!-- Dynamic Options -->
@@ -122,7 +122,7 @@
   <!-- Main Container -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-4">
     
-    <div id="accessBanner" class="hidden bg-amber-900/20 border border-amber-500/30 text-amber-200 rounded-xl p-3 text-center text-xs font-semibold"></div>
+    <div id="accessBanner" class="hidden bg-rose-900/20 border border-rose-500/30 text-rose-200 rounded-xl p-3 text-center text-xs font-semibold"></div>
 
     <!-- Scope Banner -->
     <div id="scopeBanner" class="hidden bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 rounded-xl p-3 text-center text-sm font-bold shadow-inner flex items-center justify-center gap-2">
@@ -789,7 +789,9 @@
         this.supabase = null;
         this.session = null;
         this.user = null;
-        this.role = null;
+        // A signed-in account is not automatically an editor. The role is loaded
+        // from cadetflow_profiles and must be admin or editor before editing is enabled.
+        this.userRole = null;
         this.remoteReady = false;
         this.remoteSaveTimer = null;
         this.remoteSaveChain = Promise.resolve();
@@ -890,7 +892,9 @@
         if (this.remoteReady && this.canEdit()) this.queueRemoteSave();
       }
 
-      canEdit() { return !!this.user && (this.role === 'admin' || this.role === 'editor'); }
+      canEdit() {
+        return !!this.user && ['admin', 'editor'].includes(this.userRole);
+      }
 
       setupAuthUI() {
         const form = document.getElementById('authForm');
@@ -908,7 +912,6 @@
             document.getElementById('authPassword').value = '';
             document.getElementById('authModal').classList.add('hidden');
             this.showToast('Signed in. Checking CadetFlow access…');
-            await this.refreshAuthAndState();
           } catch (error) {
             message.textContent = error.message || 'Could not sign in. Check your email and password.';
             message.classList.remove('hidden');
@@ -928,13 +931,11 @@
           this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
           });
+          
           this.supabase.auth.onAuthStateChange((_event, session) => {
-            // Defer follow-up work to avoid doing additional Supabase calls inside the auth callback.
             setTimeout(() => { if (this.supabase) this.refreshAuthAndState(session); }, 0);
           });
-          const { data, error } = await this.supabase.auth.getSession();
-          if (error) throw error;
-          await this.refreshAuthAndState(data.session);
+          
         } catch (error) {
           this.remoteReady = false;
           this.setAccessUI('Connection issue', 'CadetFlow could not connect to its shared database. This view may be using local cached data.');
@@ -942,42 +943,47 @@
         }
       }
 
-      async refreshAuthAndState(sessionOverride) {
+      async refreshAuthAndState(session) {
         if (!this.supabase) return;
         try {
-          let session = sessionOverride;
-          if (typeof session === 'undefined') {
-            const result = await this.supabase.auth.getSession();
-            if (result.error) throw result.error;
-            session = result.data.session;
-          }
           this.session = session || null;
           this.user = session?.user || null;
-          this.role = null;
+          this.userRole = null;
+
+          // Read only this user's profile. Missing profiles and profile-read errors
+          // fail closed: the user can still view the roster, but cannot edit it.
           if (this.user) {
-            const profileResult = await this.supabase.from('cadetflow_profiles').select('role,display_name').eq('user_id', this.user.id).maybeSingle();
-            if (!profileResult.error && profileResult.data) this.role = profileResult.data.role;
+            const { data: profile, error: profileError } = await this.supabase
+              .from('cadetflow_profiles')
+              .select('role')
+              .eq('user_id', this.user.id)
+              .maybeSingle();
+            if (profileError) {
+              console.warn('CadetFlow role lookup failed; keeping account view-only:', profileError);
+            } else {
+              this.userRole = profile?.role || null;
+            }
           }
           this.applyAccessUI();
+          
           const result = await this.supabase.from('cadetflow_state').select('state').eq('id', 1).maybeSingle();
           if (result.error) throw result.error;
+          
           const remote = result.data?.state;
           if (remote && Array.isArray(remote.cadets) && Array.isArray(remote.events) && remote.events.length > 0) {
             this.applyState(remote);
             this.remoteReady = true;
             this.saveLocalCacheOnly();
             this.renderEventDropdown(); this.renderAll();
-            this.setAccessUI(this.canEdit() ? `Editor · ${this.role}` : (this.user ? 'View only' : 'Public view'), this.canEdit() ? 'Changes sync to the shared CadetFlow roster.' : 'Read-only access. Sign in with an approved editor account to make changes.');
+            this.setAccessUI(this.canEdit() ? `Commander Access` : (this.user ? 'View only' : 'Public view'), this.canEdit() ? 'Changes sync to the shared CadetFlow roster.' : 'Read-only access. Sign in with an approved editor account to make changes.');
           } else if (this.canEdit()) {
-            // First-time setup: preserve this browser's existing roster and seed the shared row once.
             this.applyState(this.localSeedState || this.serializableState());
-            const { error } = await this.supabase.from('cadetflow_state').update({ state: this.serializableState(), updated_at: new Date().toISOString(), updated_by: this.user.id }).eq('id', 1);
+            const { error } = await this.supabase.from('cadetflow_state').upsert({ id: 1, state: this.serializableState(), updated_at: new Date().toISOString(), updated_by: this.user.id });
             if (error) throw error;
             this.remoteReady = true;
             this.renderEventDropdown(); this.renderAll();
-            this.setAccessUI(`Editor · ${this.role}`, 'Existing roster copied into the shared CadetFlow database.');
+            this.setAccessUI(`Commander Access`, 'Existing roster copied into the shared CadetFlow database.');
           } else {
-            // Do not show the locally seeded example roster as if it were the shared roster.
             this.applyState({ cadets: [], events: [], activeEventId: null, history: [] });
             this.remoteReady = true;
             this.renderEventDropdown(); this.renderAll();
@@ -985,9 +991,14 @@
           }
         } catch (error) {
           this.remoteReady = false;
-          this.setAccessUI('Sync unavailable', 'Could not load the shared roster. Check the Supabase tables, policies, and project key.');
+          if (error.message && error.message.includes('relation "cadetflow_state" does not exist')) {
+             this.setAccessUI('Database missing', 'The cadetflow_state table is missing in Supabase.');
+             alert("Error: You need to create the 'cadetflow_state' table in Supabase. Go to the SQL Editor and run:\n\ncreate table cadetflow_state (\n  id integer primary key,\n  state jsonb,\n  updated_at text,\n  updated_by uuid\n);");
+          } else {
+             this.setAccessUI('Sync unavailable', 'Could not load the shared roster. Check the Supabase tables, policies, and project key.');
+          }
           console.error('CadetFlow shared state:', error);
-          this.showToast('Shared database connection failed. Check the console or Supabase policies.');
+          this.showToast('Shared database connection failed. Continuing in local mode.');
         }
       }
 
@@ -1009,9 +1020,9 @@
           if (!this.canEdit() || !this.remoteReady || !this.supabase) return;
           const payload = this.serializableState();
           this.remoteSaveChain = this.remoteSaveChain.then(async () => {
-            const { error } = await this.supabase.from('cadetflow_state').update({ state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id }).eq('id', 1);
+            const { error } = await this.supabase.from('cadetflow_state').upsert({ id: 1, state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id });
             if (error) throw error;
-            this.setAccessUI(`Editor · ${this.role}`, 'All changes are saved to the shared roster.');
+            this.setAccessUI(`Commander Access`, 'All changes are saved to the shared roster.');
           }).catch(error => {
             console.error('CadetFlow save failed:', error);
             this.setAccessUI('Save failed', 'Your latest change may not have synced. Check your connection and Supabase policies.');
@@ -1025,25 +1036,30 @@
         if (status) { status.textContent = label; status.title = message || label; }
         const banner = document.getElementById('accessBanner');
         if (banner) {
-          if (message && (label.includes('issue') || label.includes('unavailable') || label.includes('failed') || message.includes('not been initialized'))) {
+          if (message && (label.includes('issue') || label.includes('unavailable') || label.includes('failed') || label.includes('missing') || message.includes('not been initialized'))) {
             banner.textContent = message; banner.classList.remove('hidden');
           } else banner.classList.add('hidden');
         }
       }
 
       applyAccessUI() {
-        document.body.classList.toggle('can-edit', this.canEdit());
+        const approvedEditor = this.canEdit();
+        document.body.classList.toggle('can-edit', approvedEditor);
         const button = document.getElementById('authButton');
         if (button) button.textContent = this.user ? 'Sign out' : 'Senior Login';
-        this.setAccessUI(this.canEdit() ? `Editor · ${this.role}` : (this.user ? (this.role ? 'View only' : 'Pending approval') : 'Public view'), this.canEdit() ? 'Changes sync to the shared roster.' : (this.user && !this.role ? 'Your account has not been approved for CadetFlow editing.' : 'Anyone with the link can view; editing requires an approved account.'));
+        const label = approvedEditor ? 'Commander Access' : (this.user ? 'View only' : 'Public view');
+        const message = approvedEditor
+          ? 'Changes sync to the shared roster.'
+          : (this.user
+              ? 'This account is not approved to edit CadetFlow. Contact the administrator if you need editor access.'
+              : 'Anyone with the link can view; editing requires an approved account.');
+        this.setAccessUI(label, message);
       }
 
       async signOut() {
         if (!this.supabase) return;
         const { error } = await this.supabase.auth.signOut();
         if (error) { this.showToast('Could not sign out.'); return; }
-        this.user = null; this.session = null; this.role = null;
-        await this.refreshAuthAndState(null);
         this.showToast('Signed out. CadetFlow is now view-only.');
       }
 
@@ -1674,14 +1690,16 @@
           ];
         });
 
-        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const uri = encodeURI(csvContent);
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = uri;
+        a.href = url;
         a.download = `NCC_${ev.title.replace(/\s+/g, '_')}_Record.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         this.showToast("CSV record exported successfully!");
       }
 
