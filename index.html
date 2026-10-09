@@ -978,8 +978,16 @@
             this.setAccessUI(this.canEdit() ? `Commander Access` : (this.user ? 'View only' : 'Public view'), this.canEdit() ? 'Changes sync to the shared CadetFlow roster.' : 'Read-only access. Sign in with an approved editor account to make changes.');
           } else if (this.canEdit()) {
             this.applyState(this.localSeedState || this.serializableState());
-            const { error } = await this.supabase.from('cadetflow_state').upsert({ id: 1, state: this.serializableState(), updated_at: new Date().toISOString(), updated_by: this.user.id });
+            // Update the existing singleton row instead of upserting. The database
+            // intentionally has an UPDATE policy for approved editors but no INSERT policy.
+            const { data: seededRow, error } = await this.supabase
+              .from('cadetflow_state')
+              .update({ state: this.serializableState(), updated_at: new Date().toISOString(), updated_by: this.user.id })
+              .eq('id', 1)
+              .select('id')
+              .maybeSingle();
             if (error) throw error;
+            if (!seededRow) throw new Error('The shared roster row (id=1) is missing. Ask the CadetFlow administrator to initialize it.');
             this.remoteReady = true;
             this.renderEventDropdown(); this.renderAll();
             this.setAccessUI(`Commander Access`, 'Existing roster copied into the shared CadetFlow database.');
@@ -1020,7 +1028,12 @@
           if (!this.canEdit() || !this.remoteReady || !this.supabase) return;
           const payload = this.serializableState();
           this.remoteSaveChain = this.remoteSaveChain.then(async () => {
-            const { error } = await this.supabase.from('cadetflow_state').upsert({ id: 1, state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id });
+            // The singleton row already exists. UPDATE avoids requiring an INSERT
+            // RLS policy, which is intentionally absent for this table.
+            const { error } = await this.supabase
+              .from('cadetflow_state')
+              .update({ state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id })
+              .eq('id', 1);
             if (error) throw error;
             this.setAccessUI(`Commander Access`, 'All changes are saved to the shared roster.');
           }).catch(error => {
