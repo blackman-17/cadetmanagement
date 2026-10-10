@@ -11,6 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
+    .cf-page-tab[aria-selected="true"] { background:#f59e0b; color:#020617; border-color:#f59e0b; }
+    .cf-page-tab[aria-selected="false"] { background:#0f172a; color:#cbd5e1; border-color:#334155; }
+    .cf-page-tab:focus-visible { outline:2px solid #fbbf24; outline-offset:2px; }
     .font-mono-num { font-family: 'JetBrains Mono', monospace; }
     .badge-check { transition: all 0.15s ease-in-out; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -121,6 +124,11 @@
 
   <!-- Main Container -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-4">
+    <nav class="flex flex-wrap gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-2" aria-label="CadetFlow pages">
+      <button type="button" class="cf-page-tab px-4 py-2 rounded-xl border text-sm font-bold transition-colors" id="rosterTab" aria-selected="true" onclick="switchCadetFlowPage('roster')">📋 Roster & Tasks</button>
+      <button type="button" class="cf-page-tab px-4 py-2 rounded-xl border text-sm font-bold transition-colors" id="availabilityTab" aria-selected="false" onclick="switchCadetFlowPage('availability')">🪖 Cadet Availability</button>
+    </nav>
+    <div id="rosterPage" class="space-y-4">
     
     <div id="accessBanner" class="hidden bg-rose-900/20 border border-rose-500/30 text-rose-200 rounded-xl p-3 text-center text-xs font-semibold"></div>
 
@@ -460,6 +468,46 @@
         <p class="text-[11px] text-slate-500">Try switching your Rank, Company, Wing, or Status filters above.</p>
       </div>
     </div>
+    </div><!-- /rosterPage -->
+
+    <section id="availabilityPage" class="hidden space-y-4" aria-labelledby="availabilityHeading">
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-6 shadow-lg">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <p class="text-[10px] uppercase tracking-[.18em] font-black text-amber-400">NCC tools</p>
+            <h2 id="availabilityHeading" class="text-xl sm:text-2xl font-black text-white mt-1">Cadet Availability Finder</h2>
+            <p class="text-sm text-slate-400 mt-1">Find active roster cadets marked free for a day and half.</p>
+          </div>
+          <span class="text-[11px] text-slate-500 border border-slate-700 rounded-lg px-3 py-2">Uses the current CadetFlow roster</span>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4 mt-6">
+          <label class="text-xs font-bold text-slate-300">Select day
+            <select id="availabilityDay" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
+              <option value="MON">Monday</option><option value="TUE">Tuesday</option><option value="WED">Wednesday</option><option value="THU">Thursday</option><option value="FRI">Friday</option><option value="SAT">Saturday</option>
+            </select>
+          </label>
+          <label class="text-xs font-bold text-slate-300">Select half
+            <select id="availabilityHalf" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
+              <option value="1">First Half</option><option value="2">Second Half</option>
+            </select>
+          </label>
+        </div>
+        <div id="availabilityResults" class="mt-5" aria-live="polite"></div>
+      </div>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-white">Schedule not assigned</h3><span id="availabilityUnassignedCount" class="text-xs font-bold rounded-full bg-slate-800 text-slate-300 px-2.5 py-1">0</span></div>
+          <p class="text-xs text-slate-500 mt-1 mb-3">These active cadets are included in CadetFlow but were not confidently matched to the old availability list.</p>
+          <div id="availabilityUnassigned" class="space-y-2"></div>
+        </div>
+        <div class="bg-slate-900 rounded-2xl border border-amber-700/30 p-4 sm:p-5">
+          <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-amber-300">Name needs review</h3><span class="text-xs font-bold rounded-full bg-amber-900/40 text-amber-300 px-2.5 py-1">1</span></div>
+          <p class="text-xs text-slate-500 mt-1 mb-3">Not assigned automatically to avoid giving a schedule to the wrong cadet.</p>
+          <div class="rounded-xl bg-slate-950/70 border border-slate-800 p-3"><p class="text-sm font-semibold text-white">Chelsa</p><p class="text-xs text-slate-400 mt-1">Old list says “Chelsa Yadav”; current roster says “Chelsa”. Please confirm whether these are the same cadet before merging availability.</p></div>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-500 px-1">Availability is carried over from the original static list. A missing schedule means “not assigned/unknown”, not “unavailable”. This page is view-only; approved seniors still manage the main roster through the existing CadetFlow controls.</p>
+    </section>
 
   </main>
 
@@ -974,7 +1022,7 @@
             this.applyState(remote);
             this.remoteReady = true;
             this.saveLocalCacheOnly();
-            this.renderEventDropdown(); this.renderAll();
+            this.renderEventDropdown(); this.renderAll(); renderAvailabilityResults();
             this.setAccessUI(this.canEdit() ? `Commander Access` : (this.user ? 'View only' : 'Public view'), this.canEdit() ? 'Changes sync to the shared CadetFlow roster.' : 'Read-only access. Sign in with an approved editor account to make changes.');
           } else if (this.canEdit()) {
             this.applyState(this.localSeedState || this.serializableState());
@@ -989,12 +1037,12 @@
             if (error) throw error;
             if (!seededRow) throw new Error('The shared roster row (id=1) is missing. Ask the CadetFlow administrator to initialize it.');
             this.remoteReady = true;
-            this.renderEventDropdown(); this.renderAll();
+            this.renderEventDropdown(); this.renderAll(); renderAvailabilityResults();
             this.setAccessUI(`Commander Access`, 'Existing roster copied into the shared CadetFlow database.');
           } else {
             this.applyState({ cadets: [], events: [], activeEventId: null, history: [] });
             this.remoteReady = true;
-            this.renderEventDropdown(); this.renderAll();
+            this.renderEventDropdown(); this.renderAll(); renderAvailabilityResults();
             this.setAccessUI(this.user ? 'View only' : 'Public view', 'The shared roster has not been initialized yet. Ask the CadetFlow administrator to sign in once.');
           }
         } catch (error) {
@@ -2092,6 +2140,52 @@
         if (!str) return '';
         return String(str).replace(/[&<>'"]/g, t => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[t] || t));
       }
+    }
+
+    // Availability imported from the original NCC Cadet Finder. Codes indicate free slots.
+    // Only confidently matched active-roster names are mapped; ambiguous names are held for review.
+    const LEGACY_AVAILABILITY = {
+      'Abhinav Pathak': ['TUE2','WED1','FRI1','SAT2'],
+      'Sri Karan M': ['MON1','TUE2','FRI1','SAT2'],
+      'Kura Sreevardhan Reddy': ['TUE1','WED2','THU1','SAT2'],
+      'Samahith M Rao': ['WED1','THU2','FRI1','SAT2'],
+      'Dhriti Shetty': ['MON2','TUE2','WED1','THU2'],
+      'Aarushi R Jingade': ['MON2','TUE1','THU1','SAT1'],
+      'Ankita Agarwal': ['TUE1','WED2','THU1','FRI2'],
+      'Aryaman Sharma': ['TUE2','WED1','THU2','FRI1'],
+      'Mani Karnica': ['TUE1','WED2','FRI2','SAT1'],
+      'Harsh Rajesh Koti': ['TUE2','WED1','THU2','SAT2'],
+      'Manusree T': ['MON2','WED2','FRI2'],
+      'Mattupalli Santosha Sai Akshit': ['MON1','TUE2','WED1','THU2'],
+      'V Padma Nayana': ['MON2','TUE1','WED2','THU1'],
+      'Jammula Chaitanya Kumar': ['MON2','TUE1','WED2','THU1']
+    };
+
+    function switchCadetFlowPage(page) {
+      const showAvailability = page === 'availability';
+      document.getElementById('rosterPage').classList.toggle('hidden', showAvailability);
+      document.getElementById('availabilityPage').classList.toggle('hidden', !showAvailability);
+      document.getElementById('rosterTab').setAttribute('aria-selected', String(!showAvailability));
+      document.getElementById('availabilityTab').setAttribute('aria-selected', String(showAvailability));
+      if (showAvailability) renderAvailabilityResults();
+    }
+
+    function renderAvailabilityResults() {
+      const results = document.getElementById('availabilityResults');
+      if (!results) return;
+      const activeCadets = (window.app && Array.isArray(app.state.cadets)) ? app.state.cadets : [];
+      const day = document.getElementById('availabilityDay').value;
+      const half = document.getElementById('availabilityHalf').value;
+      const slot = day + half;
+      const available = activeCadets.filter(c => (LEGACY_AVAILABILITY[c.name] || []).includes(slot));
+      const unassigned = activeCadets.filter(c => !Object.prototype.hasOwnProperty.call(LEGACY_AVAILABILITY, c.name));
+      const dayNames = {MON:'Monday',TUE:'Tuesday',WED:'Wednesday',THU:'Thursday',FRI:'Friday',SAT:'Saturday'};
+      const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+      results.innerHTML = `<div class="flex items-center justify-between gap-3 mb-3"><div><h3 class="text-lg font-extrabold text-white">Available cadets</h3><p class="text-xs text-slate-500 mt-0.5">${dayNames[day]} · ${half === '1' ? 'First Half' : 'Second Half'}</p></div><span class="rounded-full bg-amber-500 text-slate-950 px-3 py-1.5 text-sm font-black">${available.length}</span></div>` +
+        (available.length ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">${available.map(c => `<div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3"><p class="text-sm font-bold text-white">${esc(c.name)}</p><p class="text-[11px] text-slate-500 mt-1">${esc(c.rank || 'CDT')} · ${esc(c.company || 'Company not set')}</p></div>`).join('')}</div>` : `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-center text-sm text-slate-400">No matched active cadets are marked free for this slot.</div>`);
+      const unassignedEl = document.getElementById('availabilityUnassigned');
+      document.getElementById('availabilityUnassignedCount').textContent = unassigned.length;
+      unassignedEl.innerHTML = unassigned.length ? unassigned.map(c => `<div class="rounded-lg bg-slate-950/60 border border-slate-800 px-3 py-2"><p class="text-sm font-semibold text-slate-200">${esc(c.name)}</p><p class="text-[11px] text-slate-500">${esc(c.company || 'Company not set')} · no schedule assigned</p></div>`).join('') : `<p class="text-xs text-slate-500">All active cadets have a matched schedule.</p>`;
     }
 
     let app;
