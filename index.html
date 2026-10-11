@@ -494,17 +494,10 @@
         </div>
         <div id="availabilityResults" class="mt-5" aria-live="polite"></div>
       </div>
-      <div class="grid md:grid-cols-2 gap-4">
-        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
-          <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-white">Schedule not assigned</h3><span id="availabilityUnassignedCount" class="text-xs font-bold rounded-full bg-slate-800 text-slate-300 px-2.5 py-1">0</span></div>
-          <p class="text-xs text-slate-500 mt-1 mb-3">These active cadets are included in CadetFlow but were not confidently matched to the old availability list.</p>
-          <div id="availabilityUnassigned" class="space-y-2"></div>
-        </div>
-        <div class="bg-slate-900 rounded-2xl border border-amber-700/30 p-4 sm:p-5">
-          <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-amber-300">Name needs review</h3><span class="text-xs font-bold rounded-full bg-amber-900/40 text-amber-300 px-2.5 py-1">1</span></div>
-          <p class="text-xs text-slate-500 mt-1 mb-3">Names matched using common-sense abbreviated-name matching. Any genuinely unresolved matches will be listed here.</p>
-          <div class="rounded-xl bg-slate-950/70 border border-slate-800 p-3"><p class="text-sm font-semibold text-white">No unresolved name mismatches</p><p class="text-xs text-slate-400 mt-1">Chelsa Yadav from the old list is matched to Chelsa in the current roster.</p></div>
-        </div>
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
+        <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-white">Schedule not assigned</h3><span id="availabilityUnassignedCount" class="text-xs font-bold rounded-full bg-slate-800 text-slate-300 px-2.5 py-1">0</span></div>
+        <p class="text-xs text-slate-500 mt-1 mb-3">Active cadets without a timetable yet. These cadets are not assumed to be unavailable.</p>
+        <div id="availabilityUnassigned" class="space-y-2"></div>
       </div>
       <p class="text-[11px] text-slate-500 px-1">Availability is carried over from the original static list. A missing schedule means “not assigned/unknown”, not “unavailable”. This page is view-only; approved seniors still manage the main roster through the existing CadetFlow controls.</p>
     </section>
@@ -2143,7 +2136,7 @@
     }
 
     // Availability imported from the original NCC Cadet Finder. Codes indicate free slots.
-    // Only confidently matched active-roster names are mapped; ambiguous names are held for review.
+    // Only matched active-roster cadets have schedules; Chelsa Yadav is matched to roster name Chelsa.
     const LEGACY_AVAILABILITY = {
       'Abhinav Pathak': ['TUE2','WED1','FRI1','SAT2'],
       'Sri Karan M': ['MON1','TUE2','FRI1','SAT2'],
@@ -2162,6 +2155,21 @@
       'Chelsa': ['MON1','WED1','THU2','SAT2']
     };
 
+    // Keep schedules attached to the roster record's stable ID, so editing a cadet's display name
+    // does not accidentally unassign their timetable. Name lookup remains as a fallback for older data.
+    const LEGACY_AVAILABILITY_BY_ID = Object.fromEntries(
+      USER_EXACT_37_CADETS
+        .filter(c => Object.prototype.hasOwnProperty.call(LEGACY_AVAILABILITY, c.name))
+        .map(c => [c.id, LEGACY_AVAILABILITY[c.name]])
+    );
+
+    function getCadetAvailability(cadet) {
+      if (cadet && cadet.id && Object.prototype.hasOwnProperty.call(LEGACY_AVAILABILITY_BY_ID, cadet.id)) {
+        return LEGACY_AVAILABILITY_BY_ID[cadet.id];
+      }
+      return LEGACY_AVAILABILITY[cadet && cadet.name] || [];
+    }
+
     function switchCadetFlowPage(page) {
       const showAvailability = page === 'availability';
       document.getElementById('rosterPage').classList.toggle('hidden', showAvailability);
@@ -2179,8 +2187,8 @@
       const day = document.getElementById('availabilityDay').value;
       const half = document.getElementById('availabilityHalf').value;
       const slot = day + half;
-      const available = activeCadets.filter(c => (LEGACY_AVAILABILITY[c.name] || []).includes(slot));
-      const unassigned = activeCadets.filter(c => !Object.prototype.hasOwnProperty.call(LEGACY_AVAILABILITY, c.name));
+      const available = activeCadets.filter(c => getCadetAvailability(c).includes(slot));
+      const unassigned = activeCadets.filter(c => getCadetAvailability(c).length === 0);
       const dayNames = {MON:'Monday',TUE:'Tuesday',WED:'Wednesday',THU:'Thursday',FRI:'Friday',SAT:'Saturday'};
       const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
       results.innerHTML = `<div class="flex items-center justify-between gap-3 mb-3"><div><h3 class="text-lg font-extrabold text-white">Available cadets</h3><p class="text-xs text-slate-500 mt-0.5">${dayNames[day]} · ${half === '1' ? 'First Half' : 'Second Half'}</p></div><span class="rounded-full bg-amber-500 text-slate-950 px-3 py-1.5 text-sm font-black">${available.length}</span></div>` +
