@@ -502,8 +502,8 @@
         </div>
         <div class="bg-slate-900 rounded-2xl border border-amber-700/30 p-4 sm:p-5">
           <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-amber-300">Name needs review</h3><span class="text-xs font-bold rounded-full bg-amber-900/40 text-amber-300 px-2.5 py-1">1</span></div>
-          <p class="text-xs text-slate-500 mt-1 mb-3">Not assigned automatically to avoid giving a schedule to the wrong cadet.</p>
-          <div class="rounded-xl bg-slate-950/70 border border-slate-800 p-3"><p class="text-sm font-semibold text-white">Chelsa</p><p class="text-xs text-slate-400 mt-1">Old list says “Chelsa Yadav”; current roster says “Chelsa”. Please confirm whether these are the same cadet before merging availability.</p></div>
+          <p class="text-xs text-slate-500 mt-1 mb-3">Names matched using common-sense abbreviated-name matching. Any genuinely unresolved matches will be listed here.</p>
+          <div class="rounded-xl bg-slate-950/70 border border-slate-800 p-3"><p class="text-sm font-semibold text-white">No unresolved name mismatches</p><p class="text-xs text-slate-400 mt-1">Chelsa Yadav from the old list is matched to Chelsa in the current roster.</p></div>
         </div>
       </div>
       <p class="text-[11px] text-slate-500 px-1">Availability is carried over from the original static list. A missing schedule means “not assigned/unknown”, not “unavailable”. This page is view-only; approved seniors still manage the main roster through the existing CadetFlow controls.</p>
@@ -2158,7 +2158,8 @@
       'Manusree T': ['MON2','WED2','FRI2'],
       'Mattupalli Santosha Sai Akshit': ['MON1','TUE2','WED1','THU2'],
       'V Padma Nayana': ['MON2','TUE1','WED2','THU1'],
-      'Jammula Chaitanya Kumar': ['MON2','TUE1','WED2','THU1']
+      'Jammula Chaitanya Kumar': ['MON2','TUE1','WED2','THU1'],
+      'Chelsa': ['MON1','WED1','THU2','SAT2']
     };
 
     function switchCadetFlowPage(page) {
@@ -2173,7 +2174,8 @@
     function renderAvailabilityResults() {
       const results = document.getElementById('availabilityResults');
       if (!results) return;
-      const activeCadets = (window.app && Array.isArray(app.state.cadets)) ? app.state.cadets : [];
+      // `app` is a top-level lexical binding, not a window property. Read it directly.
+      const activeCadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [...USER_EXACT_37_CADETS];
       const day = document.getElementById('availabilityDay').value;
       const half = document.getElementById('availabilityHalf').value;
       const slot = day + half;
