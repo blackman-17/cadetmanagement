@@ -145,7 +145,7 @@
         <h2 id="homeHeading" class="mt-3 text-3xl sm:text-5xl font-black tracking-tight text-white">CadetFlow</h2>
         <p class="mt-3 max-w-2xl text-sm sm:text-base leading-7 text-slate-400">Choose a workspace to get started. More NCC tools can be added here as the platform grows.</p>
       </div>
-      <div class="grid md:grid-cols-2 gap-4 sm:gap-6">
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <button type="button" class="module-card text-left p-5 sm:p-7 min-h-56 flex flex-col items-start justify-between" onclick="switchCadetFlowPage('availability')" aria-label="Open Cadet Availability">
           <div class="flex items-start justify-between w-full gap-4"><span class="text-xs uppercase tracking-widest font-bold text-slate-500">01 / Scheduling</span><span class="text-2xl text-amber-400" aria-hidden="true">↗</span></div>
           <div class="mt-8"><h3 class="text-xl sm:text-2xl font-extrabold text-white">Cadet Availability</h3><p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">Find cadets who are free on a selected day and half, using the current roster.</p></div>
@@ -154,6 +154,10 @@
           <div class="flex items-start justify-between w-full gap-4"><span class="text-xs uppercase tracking-widest font-bold text-slate-500">02 / Operations</span><span class="text-2xl text-amber-400" aria-hidden="true">↗</span></div>
           <div class="mt-8"><h3 class="text-xl sm:text-2xl font-extrabold text-white">Task Master</h3><p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">Manage tasks, track attendance and dues, and maintain the cadet roster.</p></div>
         </button>
+        <button type="button" class="module-card text-left p-5 sm:p-7 min-h-56 flex flex-col items-start justify-between" onclick="switchCadetFlowPage('directory')" aria-label="Open Cadet Roster">
+          <div class="flex items-start justify-between w-full gap-4"><span class="text-xs uppercase tracking-widest font-bold text-slate-500">03 / Directory</span><span class="text-2xl text-amber-400" aria-hidden="true">↗</span></div>
+          <div class="mt-8"><h3 class="text-xl sm:text-2xl font-extrabold text-white">Cadet Roster</h3><p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">See who is in each company and year. Open to everyone, no sign-in needed.</p></div>
+        </button>
       </div>
       <div class="border-t border-slate-800 pt-4 flex items-center justify-between gap-3 text-xs text-slate-500"><span>CadetFlow · NCC administration</span><span id="homeCadetCount">37 active cadets</span></div>
     </section>
@@ -161,6 +165,7 @@
       <button type="button" class="border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300 hover:text-white" onclick="switchCadetFlowPage('home')">← All tools</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="rosterTab" aria-selected="true" onclick="switchCadetFlowPage('roster')">Task Master</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="availabilityTab" aria-selected="false" onclick="switchCadetFlowPage('availability')">Cadet Availability</button>
+      <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="directoryTab" aria-selected="false" onclick="switchCadetFlowPage('directory')">Cadet Roster</button>
       <div id="memoryMenu" class="relative ml-auto">
         <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="memoryTab" aria-haspopup="true" aria-expanded="false" onclick="toggleMemoryMenu()">Memory ▾</button>
         <div id="memoryDropdown" class="hidden absolute right-0 top-full mt-1 min-w-44 border border-slate-700 bg-slate-900 shadow-xl z-40">
@@ -550,6 +555,38 @@
       </div><!-- /taskWorkspace -->
     </div><!-- /rosterPage -->
 
+    <section id="directoryPage" class="hidden space-y-4" aria-labelledby="directoryHeading">
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-6 shadow-lg space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <p class="text-[10px] uppercase tracking-[.18em] font-black text-amber-400">NCC tools · Directory</p>
+            <h2 id="directoryHeading" class="text-xl sm:text-2xl font-black text-white mt-1">Cadet Roster</h2>
+            <p class="text-sm text-slate-400 mt-1">Everyone currently on the roster, by company. View only.</p>
+          </div>
+          <button type="button" onclick="app.openRosterModal()" class="self-start px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl">Edit roster</button>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <label class="col-span-2 lg:col-span-1 text-xs font-bold text-slate-300">Search
+            <input type="search" id="dirSearch" oninput="renderRosterDirectory()" placeholder="Name…" class="mt-1 block w-full placeholder-slate-600 bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="text-xs font-bold text-slate-300">Company
+            <select id="dirCompany" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+          </label>
+          <label class="text-xs font-bold text-slate-300">Year
+            <select id="dirYear" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
+          </label>
+          <label class="text-xs font-bold text-slate-300">Wing
+            <select id="dirWing" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">SD &amp; SW</option><option value="SD">SD</option><option value="SW">SW</option></select>
+          </label>
+          <label class="text-xs font-bold text-slate-300">Rank
+            <select id="dirRank" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">All ranks</option></select>
+          </label>
+        </div>
+        <div id="dirSummary" class="flex flex-wrap items-center gap-2 text-xs" aria-live="polite"></div>
+      </div>
+      <div id="dirResults" class="grid lg:grid-cols-3 gap-4"></div>
+    </section>
+
     <section id="availabilityPage" class="hidden space-y-4" aria-labelledby="availabilityHeading">
       <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-6 shadow-lg">
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -651,12 +688,17 @@
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-amber-500 flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-            Re-import / Batch Paste Cadets
+            Add / Update Cadets from a List
           </span>
           <span class="text-[11px] text-amber-600/80">Format: <code>Rank, Name, SD/SW, Company, Year</code> (year optional: 1/2/3)</span>
         </div>
+        <p class="text-[11px] text-slate-400">Cadets are matched by name. A name already in the roster is <b class="text-slate-300">updated</b> (only the details you give); a new name is <b class="text-slate-300">added</b>. You only need to paste the cadets you're adding or changing.</p>
         <textarea id="batchPasteArea" rows="2" placeholder="LCPL, Harsh Rajesh Koti, SD, Jessami&#10;CDT, Samahith M Rao, SD, Jessami..." class="w-full p-2 text-xs font-mono bg-slate-950 border border-amber-700/50 text-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"></textarea>
-        <div class="flex justify-end gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap gap-3 text-[11px]">
+            <label class="inline-flex items-center gap-1.5 text-slate-300 cursor-pointer"><input type="radio" name="batchMode" value="merge" checked class="accent-amber-500"> Add new &amp; update existing <span class="text-slate-500">(keeps everyone else)</span></label>
+            <label class="inline-flex items-center gap-1.5 text-rose-300 cursor-pointer"><input type="radio" name="batchMode" value="replace" class="accent-rose-500"> Replace entire roster <span class="text-slate-500">(removes anyone not listed)</span></label>
+          </div>
           <button onclick="app.applyBatchPaste()" class="px-3 py-1.5 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg transition-colors shadow-xs">
             Import Pasted List
           </button>
@@ -1643,6 +1685,7 @@
         const cadets = this.state.cadets;
         const homeCount = document.getElementById('homeCadetCount');
         if (homeCount) homeCount.textContent = `${cadets.length} active cadets`;
+        if (typeof renderRosterDirectory === 'function') renderRosterDirectory();
 
         const isSpecial = ev?.type === 'special';
         document.getElementById('standardTaskView')?.classList.toggle('hidden', isSpecial);
@@ -2281,45 +2324,104 @@
         this.renderAll();
       }
 
+      /**
+       * Parse one pasted line. Accepted shapes:
+       *   Rank, Name, SD/SW, Company[, Year]  |  Name, SD/SW, Company  |  Name, SD/SW  |  Name
+       * Returns only the fields the line actually gives, so updating an existing cadet never
+       * overwrites something the line left out.
+       */
+      parseRosterLine(line) {
+        const parts = line.split(/[,\t]/).map(p => p.trim());
+        const out = {};
+        let rest;
+        if (parts.length >= 4) { out.rank = parts[0]; out.name = parts[1]; rest = parts.slice(2); }
+        else { out.name = parts[0]; rest = parts.slice(1); }
+        const [wing, coy, year] = rest;
+        const errors = [];
+        if (out.rank !== undefined) {
+          const r = out.rank.toUpperCase().replace(/\./g, '');
+          if (RANKS.includes(r)) out.rank = r; else { errors.push(`unknown rank “${out.rank}”`); delete out.rank; }
+        }
+        if (wing) { const w = wing.toUpperCase(); if (w === 'SD' || w === 'SW') out.wing = w; else errors.push(`wing must be SD or SW, not “${wing}”`); }
+        if (coy) { const c = ['Jessami', 'Kohima', 'Naushera'].find(x => x.toLowerCase() === coy.toLowerCase()); if (c) out.company = c; else errors.push(`unknown company “${coy}”`); }
+        if (year) { const y = parseYear(year); if (y) out.year = y; else errors.push(`year must be 1/2/3, not “${year}”`); }
+        out.name = (out.name || '').replace(/\s+/g, ' ').trim();
+        if (!out.name) errors.push('name is missing');
+        return { fields: out, errors };
+      }
+
       applyBatchPaste() {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can import cadets.'); return; }
         const text = document.getElementById('batchPasteArea').value;
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         if (lines.length === 0) {
-          this.showToast("Paste lines formatted as: Rank, Name, SD/SW, Company");
+          this.showToast("Paste lines formatted as: Rank, Name, SD/SW, Company, Year");
           return;
         }
+        const replaceAll = document.querySelector('input[name="batchMode"]:checked')?.value === 'replace';
+        const key = name => String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const existingByName = new Map(this.state.cadets.map(c => [key(c.name), c]));
 
-        const validCoys = ['Jessami', 'Kohima', 'Naushera'];
-        const newCadets = [];
-
+        const updates = [], additions = [], problems = [], seen = new Map();
         lines.forEach((line, i) => {
-          const parts = line.split(',').map(p => p.trim());
-          let rank = 'CDT', name = `Cadet ${i + 1}`, wing = 'SD', coy = 'Jessami';
-
-          const year = parts.length >= 5 ? parseYear(parts[4]) : '';
-          if (parts.length >= 4) { rank = parts[0].toUpperCase(); name = parts[1]; wing = parts[2].toUpperCase(); coy = parts[3]; }
-          else if (parts.length === 3) { name = parts[0]; wing = parts[1].toUpperCase(); coy = parts[2]; }
-          else if (parts.length === 2) { name = parts[0]; wing = parts[1].toUpperCase(); }
-          else { name = parts[0]; }
-
-          if (!RANKS.includes(rank)) rank = 'CDT';
-          if (wing !== 'SD' && wing !== 'SW') wing = 'SD';
-
-          const matchedCoy = validCoys.find(c => c.toLowerCase() === coy.toLowerCase());
-          coy = matchedCoy || validCoys[i % 3];
-
-          newCadets.push({ id: 'cadet-' + (i + 1) + '-' + Date.now(), rank, name, wing, company: coy, year });
+          const { fields, errors } = this.parseRosterLine(line);
+          const lineNo = i + 1;
+          if (!fields.name) { problems.push(`Line ${lineNo}: ${errors.join('; ')}`); return; }
+          if (seen.has(key(fields.name))) { problems.push(`Line ${lineNo}: “${fields.name}” is listed twice; using the later line`); }
+          seen.set(key(fields.name), lineNo);
+          const existing = existingByName.get(key(fields.name));
+          if (existing) {
+            const changes = {};
+            ['rank', 'wing', 'company', 'year'].forEach(f => { if (fields[f] !== undefined && fields[f] !== (existing[f] || '')) changes[f] = fields[f]; });
+            updates.push({ cadet: existing, changes });
+            if (errors.length) problems.push(`Line ${lineNo} (${fields.name}): ${errors.join('; ')} — that part was ignored`);
+          } else {
+            // A new cadet needs a valid wing and company; rank defaults to CDT, year can be set later.
+            const missing = [];
+            if (!fields.wing) missing.push('wing (SD/SW)');
+            if (!fields.company) missing.push('company');
+            if (missing.length || errors.length) { problems.push(`Line ${lineNo} (${fields.name}): new cadet skipped — ${[...errors, ...(missing.length ? ['missing ' + missing.join(' and ')] : [])].join('; ')}`); return; }
+            additions.push({ rank: fields.rank || 'CDT', name: fields.name, wing: fields.wing, company: fields.company, year: fields.year || '' });
+          }
         });
+        // If a name appeared twice, keep only its last line.
+        const lastOnly = (list, nameOf) => list.filter((x, idx) => list.findIndex((y, j) => j > idx && key(nameOf(y)) === key(nameOf(x))) === -1);
+        const finalUpdates = lastOnly(updates, u => u.cadet.name);
+        const finalAdds = lastOnly(additions, a => a.name);
+        const changed = finalUpdates.filter(u => Object.keys(u.changes).length);
+        const pastedNames = new Set([...finalUpdates.map(u => key(u.cadet.name)), ...finalAdds.map(a => key(a.name))]);
+        const removed = replaceAll ? this.state.cadets.filter(c => !pastedNames.has(key(c.name))) : [];
 
-        this.state.cadets = newCadets;
-        this.state.selectedCadets.clear();
+        if (!changed.length && !finalAdds.length && !removed.length) {
+          this.showToast(problems.length ? 'Nothing imported — see the problems listed.' : 'Everyone pasted is already in the roster with the same details.');
+          if (problems.length) alert(`Nothing was imported:\n\n${problems.join('\n')}`);
+          return;
+        }
+        const summary = [
+          `${finalAdds.length} new cadet(s) will be added`,
+          `${changed.length} existing cadet(s) will be updated`,
+          replaceAll ? `${removed.length} cadet(s) NOT in the list will be REMOVED from the roster${removed.length ? ':\n   ' + removed.slice(0, 15).map(c => c.name).join(', ') + (removed.length > 15 ? ` … and ${removed.length - 15} more` : '') : ''}` : `Everyone else in the roster stays as is`
+        ];
+        if (problems.length) summary.push(`\nProblems:\n${problems.join('\n')}`);
+        if (!confirm(`${replaceAll ? 'REPLACE the roster' : 'Add / update cadets'}?\n\n${summary.join('\n')}`)) return;
+
+        // Existing cadets keep their id, so their task records, team places and timetable stay attached.
+        changed.forEach(u => Object.assign(u.cadet, u.changes));
+        const stamp = Date.now().toString(36);
+        finalAdds.forEach((a, i) => this.state.cadets.push({ id: `cadet-${stamp}-${i + 1}`, ...a }));
+        if (removed.length) {
+          const gone = new Set(removed.map(c => c.id));
+          this.state.cadets = this.state.cadets.filter(c => !gone.has(c.id));
+          gone.forEach(id => this.state.selectedCadets.delete(id));
+        }
+        this.logHistory('roster-import', null, `Roster import: ${finalAdds.length} added, ${changed.length} updated${removed.length ? `, ${removed.length} removed` : ''}`);
         this.saveStorage();
         this.renderEventDropdown();
         this.renderModalRosterTable();
         this.renderAll();
+        renderAvailabilityResults();
         document.getElementById('batchPasteArea').value = '';
-        this.showToast(`Imported ${newCadets.length} cadets into roster!`);
+        this.showToast(`Import done: ${finalAdds.length} added, ${changed.length} updated${removed.length ? `, ${removed.length} removed` : ''}.`);
       }
 
       openNewEventModal() {
@@ -3312,17 +3414,77 @@
     });
 
     function switchCadetFlowPage(page) {
-      const isHome = page === 'home'; const showAvailability = page === 'availability';
+      const isHome = page === 'home'; const showAvailability = page === 'availability'; const showDirectory = page === 'directory';
+      const showTasks = !isHome && !showAvailability && !showDirectory;
       document.getElementById('homePage').classList.toggle('hidden', !isHome);
       document.getElementById('moduleNav').classList.toggle('hidden', isHome);
       document.getElementById('moduleControls').classList.add('hidden');
-      document.getElementById('rosterPage').classList.toggle('hidden', isHome || showAvailability);
-      document.getElementById('availabilityPage').classList.toggle('hidden', isHome || !showAvailability);
-      document.getElementById('rosterTab').setAttribute('aria-selected', String(!isHome && !showAvailability));
+      document.getElementById('rosterPage').classList.toggle('hidden', !showTasks);
+      document.getElementById('availabilityPage').classList.toggle('hidden', !showAvailability);
+      document.getElementById('directoryPage').classList.toggle('hidden', !showDirectory);
+      document.getElementById('rosterTab').setAttribute('aria-selected', String(showTasks));
       document.getElementById('availabilityTab').setAttribute('aria-selected', String(showAvailability));
+      document.getElementById('directoryTab').setAttribute('aria-selected', String(showDirectory));
       if (showAvailability) renderAvailabilityResults();
-      if (!isHome && !showAvailability) { document.getElementById('rosterPage').classList.remove('hidden'); showTaskMasterSection('home'); renderOngoingTasks(); }
+      if (showDirectory) renderRosterDirectory();
+      if (showTasks) { document.getElementById('rosterPage').classList.remove('hidden'); showTaskMasterSection('home'); renderOngoingTasks(); }
       if (isHome && typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) document.getElementById('homeCadetCount').textContent = `${app.state.cadets.length} active cadets`;
+    }
+
+    // Public, read-only roster: who is in which company and year. Works signed in or not.
+    function renderRosterDirectory() {
+      const host = document.getElementById('dirResults');
+      if (!host || document.getElementById('directoryPage')?.classList.contains('hidden')) return;
+      const cadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [];
+      const val = id => document.getElementById(id)?.value || 'all';
+      const q = (document.getElementById('dirSearch')?.value || '').toLowerCase().trim();
+      const coy = val('dirCompany'), year = val('dirYear'), wing = val('dirWing');
+      // Rank options: only ranks that exist on the roster.
+      const rankSel = document.getElementById('dirRank');
+      const ranks = RANKS.filter(r => cadets.some(c => (c.rank || 'CDT') === r));
+      const keepRank = rankSel.value;
+      rankSel.innerHTML = '<option value="all">All ranks</option>' + ranks.map(r => `<option value="${r}">${r}</option>`).join('');
+      rankSel.value = ranks.includes(keepRank) ? keepRank : 'all';
+      const rank = rankSel.value;
+
+      const rankOrder = r => -RANKS.indexOf(r || 'CDT'); // senior ranks first
+      const list = cadets.filter(c =>
+        (coy === 'all' || c.company === coy) && yearMatches(c, year) && (wing === 'all' || c.wing === wing) &&
+        (rank === 'all' || (c.rank || 'CDT') === rank) && (!q || c.name.toLowerCase().includes(q))
+      ).sort((a, b) => rankOrder(a.rank) - rankOrder(b.rank) || (YEARS.indexOf(b.year) - YEARS.indexOf(a.year)) || a.name.localeCompare(b.name));
+
+      const count = (arr, f) => arr.filter(f).length;
+      const chip = (label, n, cls) => `<span class="px-2.5 py-1 rounded-lg border ${cls} font-bold">${label}: <span class="font-mono-num">${n}</span></span>`;
+      document.getElementById('dirSummary').innerHTML =
+        chip('Showing', list.length, 'border-amber-600/50 text-amber-300 bg-amber-900/20') +
+        YEARS.map(y => chip(`${y} yr`, count(list, c => c.year === y), 'border-violet-700/50 text-violet-300 bg-violet-900/20')).join('') +
+        chip('Year not set', count(list, c => !YEARS.includes(c.year)), 'border-slate-700 text-slate-400') +
+        chip('SD', count(list, c => c.wing === 'SD'), 'border-sky-700/50 text-sky-300') +
+        chip('SW', count(list, c => c.wing === 'SW'), 'border-rose-700/50 text-rose-300');
+
+      const tones = { Jessami: 'text-amber-400 border-amber-700/50', Kohima: 'text-indigo-400 border-indigo-700/50', Naushera: 'text-emerald-400 border-emerald-700/50' };
+      const companies = ['Jessami', 'Kohima', 'Naushera'].filter(c => coy === 'all' || c === coy);
+      host.className = `grid gap-4 ${companies.length > 1 ? 'lg:grid-cols-3' : ''}`;
+      if (!cadets.length) { host.innerHTML = '<div class="border border-slate-800 bg-slate-900 rounded-2xl p-6 text-sm text-slate-400">The roster is loading or empty.</div>'; return; }
+      host.innerHTML = companies.map(company => {
+        const people = list.filter(c => c.company === company);
+        const total = count(cadets, c => c.company === company);
+        return `<section class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden" aria-label="${company} Company">
+          <header class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
+            <h3 class="font-extrabold ${tones[company].split(' ')[0]}">${company}</h3>
+            <span class="text-xs text-slate-400 font-mono-num">${people.length}${people.length !== total ? ` of ${total}` : ''} cadet${total === 1 ? '' : 's'}</span>
+          </header>
+          ${people.length ? `<ul class="divide-y divide-slate-800/60">${people.map(c => `
+            <li class="px-4 py-2.5 flex items-center gap-2 flex-wrap">
+              <span class="px-1.5 py-0.5 rounded text-[10px] border font-mono font-bold ${(RANK_CONFIG[c.rank] || RANK_CONFIG.CDT).badgeClass}">${escapeHtml(c.rank || 'CDT')}</span>
+              <span class="text-sm font-semibold text-white">${escapeHtml(c.name)}</span>
+              <span class="ml-auto flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-black border ${c.wing === 'SD' ? 'bg-sky-900/40 text-sky-400 border-sky-700/50' : 'bg-rose-900/40 text-rose-400 border-rose-700/50'}">${escapeHtml(c.wing || '')}</span>
+                ${yearBadgeHtml(c.year)}
+              </span>
+            </li>`).join('')}</ul>` : '<p class="px-4 py-6 text-xs text-slate-500 text-center">No cadets match these filters.</p>'}
+        </section>`;
+      }).join('');
     }
 
     function renderAvailabilityResults() {
