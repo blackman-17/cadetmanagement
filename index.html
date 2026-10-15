@@ -72,7 +72,13 @@
     body:not(.can-edit) button[onclick*="removeCadet"],
     /* Backup restore changes shared data, so it is available to approved editors only. */
     body:not(.can-edit) button[title="Restore from a backup"],
+    body:not(.can-edit) button[onclick*="restoreFileInput"],
+    body:not(.can-edit) button[onclick*="unarchiveTaskById"],
+    body:not(.can-edit) button[onclick*="openSpecialEventModal"],
+    body:not(.can-edit) button[onclick*="setTeamDone"],
     body:not(.can-edit) #restoreFileInput { display: none !important; }
+    /* Read-only status badges shown to visitors in place of editor toggles. */
+    body.can-edit .viewer-only { display: none !important; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen flex flex-col antialiased selection:bg-amber-500/30 selection:text-amber-200">
@@ -160,6 +166,7 @@
         <div id="memoryDropdown" class="hidden absolute right-0 top-full mt-1 min-w-44 border border-slate-700 bg-slate-900 shadow-xl z-40">
           <button type="button" class="block w-full text-left px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800" onclick="exportCadetFlowData()">Export data</button>
           <button type="button" class="block w-full text-left px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800" onclick="document.getElementById('restoreFileInput').click(); closeMemoryMenu()">Import data</button>
+          <button type="button" class="block w-full text-left px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800 border-t border-slate-800" onclick="closeMemoryMenu(); app.openHistoryModal()">Change history</button>
         </div>
       </div>
     </nav>
@@ -170,21 +177,24 @@
           <button type="button" onclick="app.openNewEventModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-amber-400 font-bold">01 / Create</span><span><strong class="block text-xl text-white">New task</strong><span class="block text-sm text-slate-400 mt-2">Set up a new task and submission deadline.</span></span></button>
           <button type="button" onclick="showTaskMasterSection('archive')" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-slate-400 font-bold">02 / Records</span><span><strong class="block text-xl text-white">View tasks</strong><span class="block text-sm text-slate-400 mt-2">Browse archived tasks and submission outcomes.</span></span></button>
           <button id="ongoingTasksCard" type="button" onclick="showTaskMasterSection('ongoing')" class="module-card hidden text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-emerald-400 font-bold">03 / In progress</span><span><strong class="block text-xl text-white">Ongoing tasks</strong><span id="ongoingTasksCount" class="block text-sm text-slate-400 mt-2">Review active tasks.</span></span></button>
+          <button type="button" onclick="app.openSpecialEventModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-violet-400 font-bold">04 / Special event</span><span><strong class="block text-xl text-white">Special event</strong><span class="block text-sm text-slate-400 mt-2">Pick any cadets, group them into custom teams and give each team its own task.</span></span></button>
+          <button type="button" onclick="app.openRosterModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-slate-400 font-bold">05 / Roster</span><span><strong class="block text-xl text-white">Manage roster</strong><span class="block text-sm text-slate-400 mt-2">Add, rename or move cadets between companies.</span></span></button>
         </div>
       </section>
       <section id="taskArchivePage" class="hidden space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Task Master / Records</p><h2 class="text-2xl font-black text-white mt-1">Archived tasks</h2></div><button class="px-3 py-2 border border-slate-700 text-sm font-bold text-slate-200" onclick="showTaskMasterSection('home')">← Task Master</button></div>
-        <div class="flex flex-wrap gap-3"><label class="text-xs text-slate-400">Company <select id="archiveCompanyFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="All">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select></label><label class="text-xs text-slate-400">Submission outcome <select id="archiveOutcomeFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All outcomes</option><option value="late">Late submissions</option><option value="missing">Did not submit</option><option value="ontime">On-time submissions</option></select></label></div>
+        <div class="flex flex-wrap gap-3"><label class="text-xs text-slate-400">Year <select id="archiveYearFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select></label><label class="text-xs text-slate-400">Company <select id="archiveCompanyFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="All">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select></label><label class="text-xs text-slate-400">Submission outcome <select id="archiveOutcomeFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All outcomes</option><option value="late">Late submissions</option><option value="missing">Did not submit</option><option value="ontime">Completed / on time</option><option value="excused">With reason (not counted)</option></select></label></div>
         <div id="taskArchiveList" class="space-y-3"></div>
       </section>
       <section id="taskOngoingPage" class="hidden space-y-4"><div class="flex items-center justify-between gap-3"><div><p class="text-xs uppercase tracking-widest text-emerald-400 font-bold">Task Master</p><h2 class="text-2xl font-black text-white mt-1">Ongoing tasks</h2></div><button class="px-3 py-2 border border-slate-700 text-sm font-bold text-slate-200" onclick="showTaskMasterSection('home')">← Task Master</button></div><div id="ongoingTasksList" class="space-y-3"></div></section>
       <div id="taskWorkspace" class="hidden space-y-4">
+    <div><button type="button" class="px-3 py-2 border border-slate-700 text-sm font-bold text-slate-200" onclick="showTaskMasterSection('home')">← Task Master</button></div>
     <div id="accessBanner" class="hidden bg-rose-900/20 border border-rose-500/30 text-rose-200 rounded-xl p-3 text-center text-xs font-semibold"></div>
 
     <!-- Scope Banner -->
     <div id="scopeBanner" class="hidden bg-indigo-900/30 border border-indigo-500/30 text-indigo-300 rounded-xl p-3 text-center text-sm font-bold shadow-inner flex items-center justify-center gap-2">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      Task scoped exclusively to <span id="scopeBannerCoy" class="text-indigo-200"></span> Company
+      <span>Task limited to <span id="scopeBannerText" class="text-indigo-200"></span></span>
     </div>
 
     <!-- Active Event Title & Actions Header Card -->
@@ -292,6 +302,8 @@
       </div>
     </div>
 
+    <!-- Standard task view (hidden for special events, which use team cards instead) -->
+    <div id="standardTaskView" class="space-y-4">
     <!-- Real-time Stats & Company Progress Overview -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <!-- Total Progress Card -->
@@ -304,6 +316,7 @@
             <span id="statPercent" class="text-xs font-black text-slate-400 ml-auto font-mono-num">0%</span>
           </div>
         </div>
+        <p id="statExcusedNote" class="hidden text-[10px] font-semibold text-rose-300 mt-1"></p>
         <div class="w-full bg-slate-800 h-2 rounded-full mt-2.5 overflow-hidden">
           <div id="statProgressBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
         </div>
@@ -322,7 +335,7 @@
           </div>
         </div>
         <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
-          <span class="text-[11px] text-slate-400">Pending: <strong id="statJessamiPending" class="text-rose-500 font-mono-num">0</strong></span>
+          <span class="text-[11px] text-slate-400">Pending: <strong id="statJessamiPending" class="text-rose-500 font-mono-num">0</strong> <span id="statJessamiExcused" class="text-[10px] text-rose-300/80"></span></span>
           <button 
             onclick="app.copyWhatsAppCompany('Jessami')" 
             class="text-[10px] font-bold bg-amber-900/30 hover:bg-amber-800/40 text-amber-400 border border-amber-700/50 rounded-lg px-2 py-1 flex items-center gap-1 active:scale-95 transition-all"
@@ -347,7 +360,7 @@
           </div>
         </div>
         <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
-          <span class="text-[11px] text-slate-400">Pending: <strong id="statKohimaPending" class="text-rose-500 font-mono-num">0</strong></span>
+          <span class="text-[11px] text-slate-400">Pending: <strong id="statKohimaPending" class="text-rose-500 font-mono-num">0</strong> <span id="statKohimaExcused" class="text-[10px] text-rose-300/80"></span></span>
           <button 
             onclick="app.copyWhatsAppCompany('Kohima')" 
             class="text-[10px] font-bold bg-indigo-900/30 hover:bg-indigo-800/40 text-indigo-400 border border-indigo-700/50 rounded-lg px-2 py-1 flex items-center gap-1 active:scale-95 transition-all"
@@ -372,7 +385,7 @@
           </div>
         </div>
         <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
-          <span class="text-[11px] text-slate-400">Pending: <strong id="statNausheraPending" class="text-rose-500 font-mono-num">0</strong></span>
+          <span class="text-[11px] text-slate-400">Pending: <strong id="statNausheraPending" class="text-rose-500 font-mono-num">0</strong> <span id="statNausheraExcused" class="text-[10px] text-rose-300/80"></span></span>
           <button 
             onclick="app.copyWhatsAppCompany('Naushera')" 
             class="text-[10px] font-bold bg-emerald-900/30 hover:bg-emerald-800/40 text-emerald-400 border border-emerald-700/50 rounded-lg px-2 py-1 flex items-center gap-1 active:scale-95 transition-all"
@@ -450,6 +463,16 @@
           </button>
         </div>
 
+        <!-- Year Filter Group -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mr-1">Year:</span>
+          <button onclick="app.setYearFilter('all')" id="yearBtn-all" class="px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-900 transition-all">All</button>
+          <button onclick="app.setYearFilter('1st')" id="yearBtn-1st" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">1st</button>
+          <button onclick="app.setYearFilter('2nd')" id="yearBtn-2nd" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">2nd</button>
+          <button onclick="app.setYearFilter('3rd')" id="yearBtn-3rd" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">3rd</button>
+          <button onclick="app.setYearFilter('none')" id="yearBtn-none" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all" title="Cadets whose year hasn't been set">Not set</button>
+        </div>
+
         <!-- Selection Filter -->
         <div class="flex items-center gap-1.5 flex-wrap ml-auto border-l border-slate-700 pl-3">
           <button onclick="app.toggleSelectedFilter()" id="btnSelectedOnly" class="px-2.5 py-1 rounded-lg font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:text-indigo-300 transition-all">
@@ -517,6 +540,13 @@
         <p class="text-[11px] text-slate-500">Try switching your Rank, Company, Wing, or Status filters above.</p>
       </div>
     </div>
+
+    <!-- Cadets with a reason for this task: shown separately and not counted -->
+    <div id="excusedListCard" class="hidden bg-slate-900 rounded-2xl border border-rose-900/50 shadow-sm overflow-hidden"></div>
+    </div><!-- /standardTaskView -->
+
+    <!-- Special event view: custom teams, each with its own task -->
+    <div id="specialEventView" class="hidden space-y-4"></div>
       </div><!-- /taskWorkspace -->
     </div><!-- /rosterPage -->
 
@@ -534,6 +564,11 @@
           <label class="text-xs font-bold text-slate-300">Select day
             <select id="availabilityDay" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
               <option value="MON">Monday</option><option value="TUE">Tuesday</option><option value="WED">Wednesday</option><option value="THU">Thursday</option><option value="FRI">Friday</option><option value="SAT">Saturday</option>
+            </select>
+          </label>
+          <label class="text-xs font-bold text-slate-300 sm:col-span-2 sm:order-last">Year
+            <select id="availabilityYear" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
+              <option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option>
             </select>
           </label>
           <label class="text-xs font-bold text-slate-300">Select half
@@ -596,6 +631,21 @@
         </div>
       </div>
 
+      <!-- Year: summary, filter and quick set -->
+      <div class="flex flex-wrap items-center gap-2 text-xs bg-slate-800/40 border border-slate-700/50 rounded-xl p-2">
+        <span class="font-bold text-slate-300">Year</span>
+        <span id="rosterYearCounts" class="text-slate-400"></span>
+        <label class="ml-auto text-slate-400">Show
+          <select id="rosterYearFilter" onchange="app.renderModalRosterTable()" class="ml-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs">
+            <option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option>
+          </select>
+        </label>
+        <span class="text-slate-400">Set shown to
+          <select id="rosterYearBulk" class="ml-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs"><option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option></select>
+        </span>
+        <button type="button" onclick="app.setYearForShown()" class="px-2.5 py-1 font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-lg">Apply</button>
+      </div>
+
       <!-- Batch Quick Paste / Import Panel -->
       <div class="bg-amber-900/20 border border-amber-700/30 rounded-xl p-3 space-y-2">
         <div class="flex items-center justify-between">
@@ -603,7 +653,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             Re-import / Batch Paste Cadets
           </span>
-          <span class="text-[11px] text-amber-600/80">Format: <code>Rank, Name, SD/SW, Company</code></span>
+          <span class="text-[11px] text-amber-600/80">Format: <code>Rank, Name, SD/SW, Company, Year</code> (year optional: 1/2/3)</span>
         </div>
         <textarea id="batchPasteArea" rows="2" placeholder="LCPL, Harsh Rajesh Koti, SD, Jessami&#10;CDT, Samahith M Rao, SD, Jessami..." class="w-full p-2 text-xs font-mono bg-slate-950 border border-amber-700/50 text-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"></textarea>
         <div class="flex justify-end gap-2">
@@ -622,6 +672,7 @@
               <th class="p-2.5 w-24">Rank</th>
               <th class="p-2.5">Cadet Name</th>
               <th class="p-2.5 w-24">Wing</th>
+              <th class="p-2.5 w-24">Year</th>
               <th class="p-2.5 w-32">Company</th>
               <th class="p-2.5 w-12 text-center">Action</th>
             </tr>
@@ -668,15 +719,25 @@
           <label class="block text-xs font-bold text-slate-300 mb-1">Tracking Type</label>
           <select id="newEventTypeInput" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500"><option value="task">Task / Requirement</option><option value="attendance">Event Attendance</option></select>
           <p class="text-[10px] text-slate-500 mt-1">Use Event Attendance for parades, camps, practices, meetings and other events.</p>
+          <button type="button" onclick="app.closeModal('newEventModal'); app.openSpecialEventModal(document.getElementById('newEventTitleInput').value)" class="mt-2 text-[11px] font-bold text-violet-300 hover:text-violet-200 underline underline-offset-2">Need custom teams with a task per team? Create a special event →</button>
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Task Scope (Company specific?)</label>
-          <select id="newEventScopeInput" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500">
+          <select id="newEventScopeInput" onchange="app.updateTaskScopeHint('new')" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500">
             <option value="All">All Companies (Full Battalion)</option>
             <option value="Jessami">Jessami Only</option>
             <option value="Kohima">Kohima Only</option>
             <option value="Naushera">Naushera Only</option>
           </select>
+        </div>
+        <div>
+          <span class="block text-xs font-bold text-slate-300 mb-1">Year specific? <span class="font-normal text-slate-500">Tick one or more · none ticked = all years</span></span>
+          <div class="flex flex-wrap gap-2" id="newEventYears" role="group" aria-label="Years this task is for">
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 bg-slate-950 rounded-lg text-xs font-bold text-slate-200 cursor-pointer has-[:checked]:border-violet-500 has-[:checked]:text-violet-200"><input type="checkbox" value="1st" onchange="app.updateTaskScopeHint('new')" class="accent-violet-500"> 1st year</label>
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 bg-slate-950 rounded-lg text-xs font-bold text-slate-200 cursor-pointer has-[:checked]:border-violet-500 has-[:checked]:text-violet-200"><input type="checkbox" value="2nd" onchange="app.updateTaskScopeHint('new')" class="accent-violet-500"> 2nd year</label>
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 bg-slate-950 rounded-lg text-xs font-bold text-slate-200 cursor-pointer has-[:checked]:border-violet-500 has-[:checked]:text-violet-200"><input type="checkbox" value="3rd" onchange="app.updateTaskScopeHint('new')" class="accent-violet-500"> 3rd year</label>
+          </div>
+          <p id="newEventScopeHint" class="text-[10px] text-slate-500 mt-1"></p>
         </div>
         
         <!-- DEADLINE SYSTEM -->
@@ -724,12 +785,21 @@
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Task Scope</label>
-          <select id="editEventScopeInput" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500">
+          <select id="editEventScopeInput" onchange="app.updateTaskScopeHint('edit')" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500">
             <option value="All">All Companies (Full Battalion)</option>
             <option value="Jessami">Jessami Only</option>
             <option value="Kohima">Kohima Only</option>
             <option value="Naushera">Naushera Only</option>
           </select>
+        </div>
+        <div>
+          <span class="block text-xs font-bold text-slate-300 mb-1">Year specific? <span class="font-normal text-slate-500">Tick one or more · none ticked = all years</span></span>
+          <div class="flex flex-wrap gap-2" id="editEventYears" role="group" aria-label="Years this task is for">
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 bg-slate-950 rounded-lg text-xs font-bold text-slate-200 cursor-pointer has-[:checked]:border-violet-500 has-[:checked]:text-violet-200"><input type="checkbox" value="1st" onchange="app.updateTaskScopeHint('edit')" class="accent-violet-500"> 1st year</label>
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 bg-slate-950 rounded-lg text-xs font-bold text-slate-200 cursor-pointer has-[:checked]:border-violet-500 has-[:checked]:text-violet-200"><input type="checkbox" value="2nd" onchange="app.updateTaskScopeHint('edit')" class="accent-violet-500"> 2nd year</label>
+            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-700 bg-slate-950 rounded-lg text-xs font-bold text-slate-200 cursor-pointer has-[:checked]:border-violet-500 has-[:checked]:text-violet-200"><input type="checkbox" value="3rd" onchange="app.updateTaskScopeHint('edit')" class="accent-violet-500"> 3rd year</label>
+          </div>
+          <p id="editEventScopeHint" class="text-[10px] text-slate-500 mt-1"></p>
         </div>
 
         <!-- DEADLINE SYSTEM -->
@@ -746,7 +816,7 @@
           <input type="text" id="editEventDescInput" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500">
         </div>
         <div class="flex items-center justify-between pt-2">
-          <button type="button" onclick="if(confirm('Are you sure you want to permanently delete this task?')) app.handleDeleteCurrentEventDirectly()" class="text-xs font-bold text-rose-500 hover:text-rose-400 hover:underline">Delete Task</button>
+          <button type="button" onclick="if(confirm('Are you sure you want to permanently delete this task?')) app.handleDeleteCurrentEventDirectly(app.editingEventId)" class="text-xs font-bold text-rose-500 hover:text-rose-400 hover:underline">Delete Task</button>
           <div class="flex gap-2">
             <button type="button" onclick="app.closeModal('editEventModal')" class="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:bg-slate-800 rounded-xl transition-colors">Cancel</button>
             <button type="submit" class="px-4 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl transition-colors">Save Changes</button>
@@ -756,6 +826,84 @@
     </div>
   </div>
 
+
+  <!-- Modal: Create / Edit Special Event (custom teams) -->
+  <div id="specialEventModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[94vh] flex flex-col">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-[.2em] text-violet-400">Task Master · Special event</p>
+          <h3 id="specialModalHeading" class="text-lg font-extrabold text-white mt-1">New special event</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Create teams, give each team its task, then put any cadet from any company into a team.</p>
+        </div>
+        <button type="button" onclick="app.closeModal('specialEventModal')" class="text-slate-500 hover:text-slate-300 p-1" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-5 pr-1">
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="block text-xs font-bold text-slate-300">Event title
+            <input type="text" id="specialTitleInput" placeholder="e.g. Republic Day preparations" class="mt-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:border-violet-500">
+          </label>
+          <div class="border border-slate-800 bg-slate-900/50 rounded-xl p-3">
+            <label class="flex items-center gap-2 text-xs font-bold text-amber-500 cursor-pointer">
+              <input type="checkbox" id="specialHasDeadline" onchange="document.getElementById('specialDeadlineInput').classList.toggle('hidden', !this.checked)" class="w-3.5 h-3.5 accent-amber-500">
+              Set optional deadline
+            </label>
+            <input type="datetime-local" id="specialDeadlineInput" class="hidden w-full mt-2 px-3 py-1.5 bg-slate-950 border border-slate-700 text-white rounded-lg text-xs focus:outline-none focus:border-amber-500">
+          </div>
+          <label class="block text-xs font-bold text-slate-300 sm:col-span-2">Description (optional)
+            <input type="text" id="specialDescInput" placeholder="e.g. Report to the parade ground at 07:00 hrs" class="mt-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:border-violet-500">
+          </label>
+        </div>
+
+        <section class="space-y-2">
+          <div class="flex items-center justify-between gap-3">
+            <h4 class="text-sm font-extrabold text-white">1 · Teams &amp; their tasks</h4>
+            <button type="button" onclick="app.addSpecialTeam()" class="px-3 py-1.5 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl">+ Add team</button>
+          </div>
+          <div id="specialTeamsList" class="grid sm:grid-cols-2 gap-3"></div>
+        </section>
+
+        <section class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-sm font-extrabold text-white">2 · Put cadets in teams</h4>
+            <span id="specialAssignSummary" class="text-[11px] text-slate-400"></span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="specialAssignSearch" oninput="app.renderSpecialAssignList()" placeholder="Search cadet…" class="flex-1 min-w-[140px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-violet-500">
+            <select id="specialAssignYear" onchange="app.renderSpecialAssignList()" class="px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs" aria-label="Year">
+              <option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option>
+            </select>
+            <select id="specialAssignCoy" onchange="app.renderSpecialAssignList()" class="px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs">
+              <option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option>
+            </select>
+            <select id="specialAssignShow" onchange="app.renderSpecialAssignList()" class="px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs">
+              <option value="all">Everyone</option><option value="unassigned">Not in a team</option><option value="assigned">In a team</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs">
+            <span class="text-slate-400">Ticked cadets (<span id="specialBulkCount" class="font-mono-num text-white">0</span>) →</span>
+            <select id="specialBulkTeam" class="px-2 py-1.5 bg-slate-900 border border-slate-700 text-white rounded-lg text-xs"></select>
+            <button type="button" onclick="app.applySpecialBulkAssign()" class="px-3 py-1.5 font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-lg">Move</button>
+            <button type="button" onclick="app.toggleSpecialBulkAll()" class="ml-auto text-[11px] font-semibold text-slate-400 hover:text-slate-200 underline underline-offset-2">Tick / untick shown</button>
+          </div>
+          <div class="border border-slate-700 rounded-xl bg-slate-950 max-h-[40vh] overflow-y-auto">
+            <div id="specialAssignList" class="divide-y divide-slate-800"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+        <p id="specialModalError" class="hidden text-xs font-semibold text-rose-300"></p>
+        <div class="flex gap-2 ml-auto">
+          <button type="button" onclick="app.closeModal('specialEventModal')" class="px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 rounded-xl">Cancel</button>
+          <button type="button" id="specialSaveBtn" onclick="app.saveSpecialEvent()" class="px-4 py-2 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl">Create special event</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <input id="restoreFileInput" type="file" accept="application/json,.json" class="hidden" onchange="app.restoreBackupFile(this.files[0]); this.value='';">
   <!-- History Modal -->
@@ -877,7 +1025,13 @@
         this.userRole = null;
         this.remoteReady = false;
         this.remoteSaveTimer = null;
-        this.remoteSaveChain = Promise.resolve();
+        this.syncChain = Promise.resolve();
+        this.syncBase = null;        // last copy of the shared state the server is known to have
+        this.remoteVersion = null;   // its updated_at, used to detect someone else's save
+        this.hasUnsyncedChanges = false;
+        this.liveSyncStarted = false;
+        this.pollTimer = null;
+        this.realtimeChannel = null;
         this.localSeedState = null;
         this.state = {
           cadets: [],
@@ -888,6 +1042,7 @@
           filters: {
             company: 'all',
             wing: 'all',
+            year: 'all',
             rank: 'all',
             status: 'all',
             search: '',
@@ -939,7 +1094,7 @@
             this.state.events = (data.events && data.events.length > 0) ? data.events : [...DEFAULT_EVENTS];
             this.state.activeEventId = data.activeEventId || this.state.events[0].id;
             this.state.history = Array.isArray(data.history) ? data.history : [];
-            this.state.events.forEach(ev => { if (!ev.type) ev.type = 'task'; if (typeof ev.archived !== 'boolean') ev.archived = false; });
+            this.state.events.forEach(ev => normalizeEvent(ev));
           } else {
             this.state.cadets = [...USER_EXACT_37_CADETS];
             this.state.events = [...DEFAULT_EVENTS];
@@ -962,7 +1117,8 @@
       serializableState() {
         return {
           cadets: this.state.cadets,
-          events: this.state.events,
+          // Leave out untouched (empty) records so they don't count as changes.
+          events: this.state.events.map(ev => ({ ...ev, records: compactRecords(ev.records) })),
           activeEventId: this.state.activeEventId,
           history: this.state.history || []
         };
@@ -1016,7 +1172,13 @@
             auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
           });
           
-          this.supabase.auth.onAuthStateChange((_event, session) => {
+          this.supabase.auth.onAuthStateChange((event, session) => {
+            // Token refreshes happen roughly hourly and on tab focus. Reloading the shared
+            // state then would throw away an editor's unsynced change, so only keep the session.
+            if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session?.user?.id && session.user.id === this.user?.id) {
+              this.session = session; this.user = session.user;
+              return;
+            }
             setTimeout(() => { if (this.supabase) this.refreshAuthAndState(session); }, 0);
           });
           
@@ -1030,6 +1192,7 @@
       async refreshAuthAndState(session) {
         if (!this.supabase) return;
         try {
+          const previousUserId = this.user?.id || null;
           this.session = session || null;
           this.user = session?.user || null;
           this.userRole = null;
@@ -1049,46 +1212,55 @@
             }
           }
           this.applyAccessUI();
-          
-          const result = await this.supabase.from('cadetflow_state').select('state').eq('id', 1).maybeSingle();
+
+          const result = await this.supabase.from('cadetflow_state').select('state, updated_at').eq('id', 1).maybeSingle();
           if (result.error) throw result.error;
-          
+
           const remote = result.data?.state;
           if (remote && Array.isArray(remote.cadets) && Array.isArray(remote.events) && remote.events.length > 0) {
-            this.applyState(remote);
+            // Keep the task this person was looking at; which task is open is a per-device choice.
+            const keepActive = this.state.activeEventId;
+            this.applyState({ ...cloneData(remote), activeEventId: keepActive });
+            this.syncBase = cloneData(remote);
+            this.remoteVersion = result.data.updated_at ?? null;
             this.applyAccessUI();
             this.remoteReady = true;
             this.saveLocalCacheOnly();
-            this.renderEventDropdown(); this.renderAll(); renderAvailabilityResults();
+            this.rerenderAfterRemote();
             this.setAccessUI(this.canEdit() ? `Commander Access` : (this.user ? 'View only' : 'Public view'), this.canEdit() ? 'Changes sync to the shared CadetFlow roster.' : 'Read-only access. Sign in with an approved editor account to make changes.');
           } else if (this.canEdit()) {
             this.applyState(this.localSeedState || this.serializableState());
             this.applyAccessUI();
             // Update the existing singleton row instead of upserting. The database
             // intentionally has an UPDATE policy for approved editors but no INSERT policy.
+            const payload = cloneData(this.serializableState());
             const { data: seededRow, error } = await this.supabase
               .from('cadetflow_state')
-              .update({ state: this.serializableState(), updated_at: new Date().toISOString(), updated_by: this.user.id })
+              .update({ state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id })
               .eq('id', 1)
-              .select('id')
+              .select('id, updated_at')
               .maybeSingle();
             if (error) throw error;
             if (!seededRow) throw new Error('The shared roster row (id=1) is missing. Ask the CadetFlow administrator to initialize it.');
+            this.syncBase = payload;
+            this.remoteVersion = seededRow.updated_at ?? null;
             this.remoteReady = true;
-            this.renderEventDropdown(); this.renderAll(); renderAvailabilityResults();
+            this.rerenderAfterRemote();
             this.setAccessUI(`Commander Access`, 'Existing roster copied into the shared CadetFlow database.');
           } else {
             this.applyState({ cadets: [], events: [], activeEventId: null, history: [] });
             this.applyAccessUI();
             this.remoteReady = true;
-            this.renderEventDropdown(); this.renderAll(); renderAvailabilityResults();
+            this.rerenderAfterRemote();
             this.setAccessUI(this.user ? 'View only' : 'Public view', 'The shared roster has not been initialized yet. Ask the CadetFlow administrator to sign in once.');
           }
+          if (previousUserId !== (this.user?.id || null) || !this.liveSyncStarted) this.startLiveSync();
         } catch (error) {
           this.remoteReady = false;
-          if (error.message && error.message.includes('relation "cadetflow_state" does not exist')) {
+          const msg = String(error?.message || '');
+          if (msg.includes('cadetflow_state') && (msg.includes('does not exist') || msg.includes('Could not find'))) {
              this.setAccessUI('Database missing', 'The cadetflow_state table is missing in Supabase.');
-             alert("Error: You need to create the 'cadetflow_state' table in Supabase. Go to the SQL Editor and run:\n\ncreate table cadetflow_state (\n  id integer primary key,\n  state jsonb,\n  updated_at text,\n  updated_by uuid\n);");
+             alert("Error: You need to create the 'cadetflow_state' table in Supabase. Go to the SQL Editor and run:\n\ncreate table cadetflow_state (\n  id integer primary key,\n  state jsonb,\n  updated_at timestamptz,\n  updated_by uuid\n);");
           } else {
              this.setAccessUI('Sync unavailable', 'Could not load the shared roster. Check the Supabase tables, policies, and project key.');
           }
@@ -1102,33 +1274,162 @@
         this.state.events = Array.isArray(data.events) ? data.events : [];
         this.state.activeEventId = this.state.events.some(e => e.id === data.activeEventId) ? data.activeEventId : (this.state.events[0]?.id || null);
         this.state.history = Array.isArray(data.history) ? data.history : [];
-        this.state.events.forEach(ev => { if (!ev.type) ev.type = 'task'; if (typeof ev.archived !== 'boolean') ev.archived = false; if (!ev.records) ev.records = {}; });
+        this.state.events.forEach(ev => normalizeEvent(ev));
+        // Drop ticked checkboxes for cadets that no longer exist.
+        const ids = new Set(this.state.cadets.map(c => c.id));
+        [...this.state.selectedCadets].forEach(id => { if (!ids.has(id)) this.state.selectedCadets.delete(id); });
       }
 
       saveLocalCacheOnly() {
         try { localStorage.setItem(this.storageKey, JSON.stringify(this.serializableState())); } catch (e) {}
       }
 
+      /** Redraw everything that shows shared data, after it changed underneath us. */
+      rerenderAfterRemote() {
+        this.renderEventDropdown();
+        this.renderAll();
+        if (typeof renderOngoingTasks === 'function') renderOngoingTasks();
+        if (typeof renderAvailabilityResults === 'function') renderAvailabilityResults();
+        if (!document.getElementById('taskArchivePage')?.classList.contains('hidden')) renderTaskArchive();
+        const roster = document.getElementById('rosterModal');
+        // Don't redraw the roster table while someone is typing in it.
+        if (roster && !roster.classList.contains('hidden') && !roster.contains(document.activeElement)) this.renderModalRosterTable();
+        const history = document.getElementById('historyModal');
+        if (history && !history.classList.contains('hidden')) this.openHistoryModal();
+      }
+
+      // ---------------------------------------------------------------------------
+      // Shared-record sync.
+      // The whole roster lives in one row (cadetflow_state id=1). To stop two editors
+      // overwriting each other, every save only succeeds if the row still has the
+      // `updated_at` we last saw. If someone else saved in between, the save matches no
+      // row; we then fetch their version, merge it with ours (three-way, field by field:
+      // base = last synced copy, local = ours, remote = theirs) and try again.
+      // Edits to different cadets, tasks or fields made at the same time are all kept.
+      // Only when two people change the very same field does the later save win.
+      // ---------------------------------------------------------------------------
+      runSync(task) {
+        const run = this.syncChain.then(task);
+        this.syncChain = run.catch(() => {});
+        return run;
+      }
+
       queueRemoteSave() {
+        this.hasUnsyncedChanges = true;
         clearTimeout(this.remoteSaveTimer);
-        this.remoteSaveTimer = setTimeout(() => {
+        this.remoteSaveTimer = setTimeout(() => this.flushRemoteSave(), 500);
+      }
+
+      flushRemoteSave() {
+        clearTimeout(this.remoteSaveTimer);
+        this.remoteSaveTimer = null;
+        return this.runSync(async () => {
           if (!this.canEdit() || !this.remoteReady || !this.supabase) return;
-          const payload = this.serializableState();
-          this.remoteSaveChain = this.remoteSaveChain.then(async () => {
-            // The singleton row already exists. UPDATE avoids requiring an INSERT
-            // RLS policy, which is intentionally absent for this table.
-            const { error } = await this.supabase
-              .from('cadetflow_state')
-              .update({ state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id })
-              .eq('id', 1);
-            if (error) throw error;
-            this.setAccessUI(`Commander Access`, 'All changes are saved to the shared roster.');
-          }).catch(error => {
+          try {
+            for (let attempt = 0; attempt < 5; attempt++) {
+              const payload = cloneData(this.serializableState());
+              if (this.syncBase && stateEqual(payload, this.syncBase)) { this.hasUnsyncedChanges = false; return; }
+              let query = this.supabase
+                .from('cadetflow_state')
+                .update({ state: payload, updated_at: new Date().toISOString(), updated_by: this.user.id })
+                .eq('id', 1);
+              query = this.remoteVersion == null ? query.is('updated_at', null) : query.eq('updated_at', this.remoteVersion);
+              const { data, error } = await query.select('updated_at').maybeSingle();
+              if (error) throw error;
+              if (data) {
+                this.syncBase = payload;
+                this.remoteVersion = data.updated_at ?? null;
+                this.hasUnsyncedChanges = !stateEqual(this.serializableState(), payload);
+                this.setAccessUI(`Commander Access`, 'All changes are saved to the shared roster.');
+                return;
+              }
+              // Someone else saved first: bring in their changes, then retry with the merged state.
+              await this.pullAndMerge();
+            }
+            throw new Error('Too many people are saving at once. Please try again.');
+          } catch (error) {
             console.error('CadetFlow save failed:', error);
             this.setAccessUI('Save failed', 'Your latest change may not have synced. Check your connection and Supabase policies.');
             this.showToast('Could not sync changes to the shared database.');
+          }
+        });
+      }
+
+      /** Fetch the shared row; if it changed, merge it into the local state. Returns true if it changed. */
+      async pullAndMerge() {
+        const { data, error } = await this.supabase.from('cadetflow_state').select('state, updated_at').eq('id', 1).maybeSingle();
+        if (error) throw error;
+        const remote = data?.state;
+        if (!remote || !Array.isArray(remote.events)) return false;
+        const version = data.updated_at ?? null;
+        if (version === this.remoteVersion && this.syncBase) return false;
+        const local = cloneData(this.serializableState());
+        const merged = this.syncBase ? mergeSharedState(this.syncBase, local, remote) : cloneData(remote);
+        merged.activeEventId = local.activeEventId;
+        this.syncBase = cloneData(remote);
+        this.remoteVersion = version;
+        const shownId = this.displayedEventId;
+        this.applyState(merged);
+        this.saveLocalCacheOnly();
+        this.handleRemovedEvents(shownId);
+        this.rerenderAfterRemote();
+        return true;
+      }
+
+      /** If another editor deleted the task on screen (or open in an editor), say so instead of silently showing another one. */
+      handleRemovedEvents(shownId) {
+        const exists = id => this.state.events.some(e => e.id === id);
+        if (shownId && !exists(shownId) && !document.getElementById('taskWorkspace')?.classList.contains('hidden')) {
+          showTaskMasterSection('home');
+          this.showToast('The task you were viewing was deleted by another editor.');
+        }
+        if (this.editingEventId && !exists(this.editingEventId)) {
+          this.editingEventId = null;
+          this.closeModal('editEventModal');
+          this.showToast('The task you were editing was deleted by another editor.');
+        }
+        if (this.specialDraft?.editId && !exists(this.specialDraft.editId)) {
+          this.specialDraft = null;
+          this.closeModal('specialEventModal');
+          this.showToast('The special event you were editing was deleted by another editor.');
+        }
+      }
+
+      /** Check for other people's changes (used by live updates, polling and tab focus). */
+      refreshFromRemote() {
+        if (!this.remoteReady || !this.supabase) return Promise.resolve();
+        return this.runSync(async () => {
+          try {
+            const changed = await this.pullAndMerge();
+            // If we still have local edits on top of the merged result, push them.
+            if (changed && this.canEdit() && this.syncBase && !stateEqual(this.serializableState(), this.syncBase)) this.queueRemoteSave();
+          } catch (error) { console.warn('CadetFlow refresh failed:', error); }
+        });
+      }
+
+      startLiveSync() {
+        this.liveSyncStarted = true;
+        if (this.realtimeChannel) { try { this.supabase.removeChannel(this.realtimeChannel); } catch (e) {} this.realtimeChannel = null; }
+        // Instant updates when Supabase Realtime is enabled for cadetflow_state (optional).
+        try {
+          if (typeof this.supabase.channel === 'function') {
+            this.realtimeChannel = this.supabase
+              .channel('cadetflow-state')
+              .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'cadetflow_state', filter: 'id=eq.1' }, () => this.refreshFromRemote())
+              .subscribe();
+          }
+        } catch (e) { console.warn('CadetFlow realtime unavailable; using polling.', e); }
+        // Fallback: check every 20 s while the tab is visible, and whenever it regains focus.
+        clearInterval(this.pollTimer);
+        this.pollTimer = setInterval(() => { if (document.visibilityState === 'visible') this.refreshFromRemote(); }, 20000);
+        if (!this.visibilityHooked) {
+          this.visibilityHooked = true;
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') this.refreshFromRemote();
+            else if (this.remoteSaveTimer) this.flushRemoteSave(); // don't leave a pending save behind
           });
-        }, 500);
+          window.addEventListener('focus', () => this.refreshFromRemote());
+        }
       }
 
       setAccessUI(label, message) {
@@ -1174,12 +1475,60 @@
         this.showToast('Signed out. CadetFlow is now view-only.');
       }
 
+      /**
+       * The task the workspace is actually showing (set every time it is drawn).
+       * Every action started from the workspace uses this, never "whatever is selected",
+       * so a selection change that hasn't been redrawn yet can't redirect a click to another task.
+       */
+      workspaceEvent() {
+        if (!this.displayedEventId) return null;
+        return this.state.events.find(e => e.id === this.displayedEventId) || null;
+      }
+
+      /** Resolve the event an action applies to; a missing/deleted one returns null (never a fallback). */
+      eventForAction(eventId) {
+        const ev = eventId ? this.state.events.find(e => e.id === eventId) : this.workspaceEvent();
+        if (!ev) this.showToast('That task no longer exists. It may have been deleted by another editor.');
+        return ev || null;
+      }
+
       getActiveEvent() {
         return this.state.events.find(e => e.id === this.state.activeEventId);
       }
 
-      getCadetRecord(cadetId) {
-        const ev = this.getActiveEvent();
+      /** Read a cadet's record for a given event without creating one (safe for rendering). */
+      peekRecord(cadetId, ev = this.workspaceEvent()) {
+        return (ev && ev.records && ev.records[cadetId]) || EMPTY_RECORD;
+      }
+
+      /** done | excused (has a reason, not counted) | pending, for a given event. */
+      cadetStatus(cadetId, ev = this.workspaceEvent()) {
+        return recordStatus(this.peekRecord(cadetId, ev));
+      }
+
+      findEvent(eventId) {
+        return eventId ? (this.state.events.find(e => e.id === eventId) || null) : this.workspaceEvent();
+      }
+
+      /** Same scope/company/wing/rank/selection/search filters the task list uses (status not included). */
+      matchesViewFilters(c, ev) {
+        const f = this.state.filters;
+        if (ev && ev.type !== 'special' && !cadetInEvent(c, ev)) return false;
+        if (f.company !== 'all' && c.company !== f.company) return false;
+        if (f.wing !== 'all' && c.wing !== f.wing) return false;
+        if (!yearMatches(c, f.year)) return false;
+        if (f.rank !== 'all' && c.rank !== f.rank) return false;
+        if (f.selectedOnly && !this.state.selectedCadets.has(c.id)) return false;
+        const q = f.search.toLowerCase().trim();
+        if (q) {
+          const rec = this.peekRecord(c.id, ev);
+          if (!c.name.toLowerCase().includes(q) && !(c.rank || '').toLowerCase().includes(q) && !(rec.note || '').toLowerCase().includes(q)) return false;
+        }
+        return true;
+      }
+
+      /** Get a cadet's record for a given event, creating it so it can be changed. */
+      getCadetRecord(cadetId, ev = this.workspaceEvent()) {
         if (!ev) return { done: false, note: '', completedAt: null };
         if (!ev.records) ev.records = {};
         if (!ev.records[cadetId]) {
@@ -1195,18 +1544,30 @@
           const opt = document.createElement('option');
           opt.value = ev.id;
           let label = ev.archived ? `📦 [ARCHIVED] ${ev.title}` : ev.title;
-          if (ev.scope && ev.scope !== 'All') label += ` (${ev.scope})`;
+          if (ev.type === 'special') label += ' (Special event)';
+          else if ((ev.scope && ev.scope !== 'All') || eventYears(ev).length) label += ` (${scopeText(ev.scope, eventYears(ev))})`;
           opt.textContent = label;
           if (ev.id === this.state.activeEventId) opt.selected = true;
           sel.appendChild(opt);
         });
 
         const active = this.getActiveEvent();
+        this.displayedEventId = active?.id || null;
+        const isSpecial = active?.type === 'special';
+        // Pending-list copy and "Archive Completed" are company-based; special events have per-team copy instead.
+        document.getElementById('copyDropdownContainer')?.classList.toggle('hidden', !active || isSpecial);
+        if (!active) {
+          document.getElementById('displayEventTitle').textContent = 'No task selected';
+          document.getElementById('displayEventNote').textContent = 'Create a task from Task Master to get started.';
+          document.getElementById('displayEventDeadline').classList.add('hidden');
+          document.getElementById('scopeBanner').classList.add('hidden');
+          ['1st', '2nd', '3rd', 'none'].forEach(y => document.getElementById(`yearBtn-${y}`)?.classList.remove('hidden'));
+        }
         if (active) {
           document.getElementById('displayEventTitle').textContent = active.title;
           const archiveBtn = document.getElementById('archiveCurrentEventBtn');
           if (archiveBtn) archiveBtn.textContent = active.archived ? 'Unarchive' : 'Archive';
-          document.getElementById('displayEventNote').textContent = active.description || 'Active cadet requirement';
+          document.getElementById('displayEventNote').textContent = active.description || (isSpecial ? `Special event · ${(active.teams || []).length} team(s)` : 'Active cadet requirement');
           
           // Deadline Display
           const dlDiv = document.getElementById('displayEventDeadline');
@@ -1218,9 +1579,16 @@
           }
 
           const banner = document.getElementById('scopeBanner');
+          const activeYears = isSpecial ? [] : eventYears(active);
+          banner.classList.toggle('hidden', !((active.scope && active.scope !== 'All') || activeYears.length));
+          document.getElementById('scopeBannerText').textContent = scopeText(active.scope, activeYears);
+          // Only offer year filters that exist in this task.
+          ['1st', '2nd', '3rd', 'none'].forEach(y => {
+            const btn = document.getElementById(`yearBtn-${y}`);
+            if (btn) btn.classList.toggle('hidden', activeYears.length > 0 && !activeYears.includes(y));
+          });
+          if (activeYears.length && this.state.filters.year !== 'all' && !activeYears.includes(this.state.filters.year)) this.setYearFilter('all', false);
           if (active.scope && active.scope !== 'All') {
-            banner.classList.remove('hidden');
-            document.getElementById('scopeBannerCoy').textContent = active.scope;
             
             // Hide Coy Filter and Stats that are irrelevant
             document.getElementById('coyFilterGroup').classList.add('hidden');
@@ -1237,7 +1605,6 @@
             });
             document.getElementById('statCardAll').classList.add('hidden');
           } else {
-            banner.classList.add('hidden');
             document.getElementById('coyFilterGroup').classList.remove('hidden');
             ['Jessami', 'Kohima', 'Naushera'].forEach(coy => {
               if(document.getElementById(`statCard${coy}`)) document.getElementById(`statCard${coy}`).classList.remove('hidden');
@@ -1252,7 +1619,9 @@
 
       switchEvent(eventId) {
         this.state.activeEventId = eventId;
-        this.saveStorage();
+        // Opening a task is a view action. Writing the whole shared state here would let an
+        // editor holding older data overwrite another editor's newer changes, so cache locally only.
+        this.saveLocalCacheOnly();
         // Reset selected filters & checkboxes when switching event
         this.state.filters.company = 'all';
         this.state.filters.selectedOnly = false;
@@ -1266,43 +1635,47 @@
 
       renderAll() {
         const ev = this.getActiveEvent();
+        this.displayedEventId = ev?.id || null;
+        const ws = document.getElementById('taskWorkspace');
+        if (ws) ws.dataset.eventId = this.displayedEventId || '';
         const container = document.getElementById('cadetListContainer');
         const emptyState = document.getElementById('emptyListState');
         const cadets = this.state.cadets;
+        const homeCount = document.getElementById('homeCadetCount');
+        if (homeCount) homeCount.textContent = `${cadets.length} active cadets`;
+
+        const isSpecial = ev?.type === 'special';
+        document.getElementById('standardTaskView')?.classList.toggle('hidden', isSpecial);
+        document.getElementById('specialEventView')?.classList.toggle('hidden', !isSpecial);
+        if (isSpecial) { this.renderSpecialEventView(ev); return; }
 
         if (!ev || cadets.length === 0) {
           container.innerHTML = '';
           emptyState.classList.remove('hidden');
+          this.renderExcusedList([], ev);
           return;
         }
 
-        const isScoped = ev.scope && ev.scope !== 'All';
+        const isScoped = (ev.scope && ev.scope !== 'All') || eventYears(ev).length > 0;
 
-        let totalDone = 0;
-        let total = 0;
-
+        // Cadets with a reason are excused: listed separately and left out of every count.
         const statsByCoy = {
-          Jessami: { total: 0, done: 0 },
-          Kohima: { total: 0, done: 0 },
-          Naushera: { total: 0, done: 0 }
+          Jessami: { total: 0, done: 0, excused: 0 },
+          Kohima: { total: 0, done: 0, excused: 0 },
+          Naushera: { total: 0, done: 0, excused: 0 }
         };
-
-        let lcplCount = 0;
-        let cdtCount = 0;
+        let total = 0, totalDone = 0, totalExcused = 0, lcplCount = 0, cdtCount = 0;
 
         cadets.forEach(c => {
-          if (isScoped && c.company !== ev.scope) return; // Skip entirely if out of scope
-
-          total++;
-          const rec = this.getCadetRecord(c.id);
+          if (!cadetInEvent(c, ev)) return; // Skip cadets outside the task's company / years
+          const status = this.cadetStatus(c.id, ev);
           const coyKey = statsByCoy[c.company] ? c.company : 'Jessami';
+          if (status === 'excused') { totalExcused++; statsByCoy[coyKey].excused++; return; }
+          total++;
           statsByCoy[coyKey].total++;
-          if (rec.done) {
-            totalDone++;
-            statsByCoy[coyKey].done++;
-          }
+          if (status === 'done') { totalDone++; statsByCoy[coyKey].done++; }
           if (c.rank === 'LCPL') lcplCount++;
-          else cdtCount++;
+          else if (!c.rank || c.rank === 'CDT') cdtCount++;
         });
 
         const totalPending = total - totalDone;
@@ -1313,6 +1686,8 @@
         document.getElementById('statTotalCount').textContent = `/ ${total}`;
         document.getElementById('statPercent').textContent = `${totalPct}%`;
         document.getElementById('statProgressBar').style.width = `${totalPct}%`;
+        const excusedNote = document.getElementById('statExcusedNote');
+        if (excusedNote) { excusedNote.textContent = totalExcused ? `+ ${totalExcused} with reason (not counted)` : ''; excusedNote.classList.toggle('hidden', !totalExcused); }
 
         // Update company blocks
         ['Jessami', 'Kohima', 'Naushera'].forEach(coy => {
@@ -1322,6 +1697,8 @@
           document.getElementById(`stat${coy}Total`).textContent = `/ ${cStat.total} done`;
           document.getElementById(`stat${coy}Pending`).textContent = (cStat.total - cStat.done);
           document.getElementById(`stat${coy}Percent`).textContent = `${pct}%`;
+          const ex = document.getElementById(`stat${coy}Excused`);
+          if (ex) { ex.textContent = cStat.excused ? `· ${cStat.excused} with reason` : ''; }
         });
 
         document.getElementById('statusCount-all').textContent = total;
@@ -1338,34 +1715,24 @@
         const mainBtnLabel = document.getElementById('mainCopyBtnLabel');
         if (this.state.filters.company !== 'all') {
           mainBtnLabel.textContent = `Copy ${this.state.filters.company} Pending`;
-        } else if (this.state.filters.wing !== 'all' || this.state.filters.rank !== 'all' || this.state.filters.search || this.state.filters.selectedOnly || isScoped) {
+        } else if (this.state.filters.wing !== 'all' || this.state.filters.year !== 'all' || this.state.filters.rank !== 'all' || this.state.filters.search || this.state.filters.selectedOnly || isScoped) {
           mainBtnLabel.textContent = `Copy Filtered Pending`;
         } else {
           mainBtnLabel.textContent = `Copy WhatsApp Pending`;
         }
 
-        const q = this.state.filters.search.toLowerCase().trim();
         let displayIndex = 1;
-        
-        const filtered = cadets
-          .map((cadet) => ({ ...cadet, rec: this.getCadetRecord(cadet.id) }))
-          .filter(c => {
-            if (isScoped && c.company !== ev.scope) return false;
-            if (this.state.filters.company !== 'all' && c.company !== this.state.filters.company) return false;
-            if (this.state.filters.wing !== 'all' && c.wing !== this.state.filters.wing) return false;
-            if (this.state.filters.rank !== 'all' && c.rank !== this.state.filters.rank) return false;
-            if (this.state.filters.status === 'done' && !c.rec.done) return false;
-            if (this.state.filters.status === 'pending' && c.rec.done) return false;
-            if (this.state.filters.selectedOnly && !this.state.selectedCadets.has(c.id)) return false;
-
-            if (q) {
-              const matchesName = c.name.toLowerCase().includes(q);
-              const matchesRank = (c.rank || '').toLowerCase().includes(q);
-              const matchesNote = (c.rec.note || '').toLowerCase().includes(q);
-              if (!matchesName && !matchesRank && !matchesNote) return false;
-            }
-            return true;
-          });
+        const inView = cadets
+          .filter(c => this.matchesViewFilters(c, ev))
+          .map(cadet => ({ ...cadet, rec: this.peekRecord(cadet.id, ev), status: this.cadetStatus(cadet.id, ev) }));
+        const excusedInView = inView.filter(c => c.status === 'excused');
+        const filtered = inView.filter(c => {
+          if (c.status === 'excused') return false;
+          if (this.state.filters.status === 'done' && c.status !== 'done') return false;
+          if (this.state.filters.status === 'pending' && c.status !== 'pending') return false;
+          return true;
+        });
+        this.renderExcusedList(excusedInView, ev);
 
         const dropCountFiltered = document.getElementById('dropCountFiltered');
         if (dropCountFiltered) dropCountFiltered.textContent = filtered.filter(f => !f.rec.done).length;
@@ -1411,6 +1778,7 @@
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${wingBadge}">
                       ${item.wing}
                     </span>
+                    ${yearBadgeHtml(item.year)}
                     <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${coyBadge}">
                       ${item.company}
                     </span>
@@ -1421,16 +1789,16 @@
               <!-- Center/Right Controls -->
               <div class="flex items-center justify-between sm:justify-end gap-4 ml-8 sm:ml-0">
                 <!-- Reason Button -->
-                <button onclick="app.promptReason('${item.id}')" class="text-xs px-2.5 py-1.5 rounded-lg border flex-1 sm:flex-none sm:w-32 text-left sm:text-center truncate transition-colors ${
+                <button onclick="app.promptReason('${item.id}', '${ev.id}')" class="text-xs px-2.5 py-1.5 rounded-lg border flex-1 sm:flex-none sm:w-32 text-left sm:text-center truncate transition-colors ${
                   hasReason ? 'bg-rose-900/40 text-rose-300 border-rose-800/60 font-medium' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 border-dashed'
-                }" title="${hasReason ? this.escape(item.rec.note) : 'Add reason for non-participation'}">
+                }" title="${hasReason ? this.escape(item.rec.note) : 'Add a reason (cadet will be listed separately and not counted)'}">
                   ${hasReason ? this.escape(item.rec.note) : '+ Add Reason'}
                 </button>
 
                 <!-- Single-Click Status Toggle -->
                 <div class="w-24">
                   <button 
-                    onclick="app.toggleCadetStatus('${item.id}')" 
+                    onclick="app.toggleCadetStatus('${item.id}', '${ev.id}')" 
                     class="badge-check w-full py-1.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center shadow-xs border cursor-pointer active:scale-95 ${
                       item.rec.done 
                         ? (isLate ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500')
@@ -1460,6 +1828,7 @@
         this.setStatusFilter(this.state.filters.status, false);
         this.setCompanyFilter(this.state.filters.company, false);
         this.setWingFilter(this.state.filters.wing, false);
+        this.setYearFilter(this.state.filters.year, false);
         this.setRankFilter(this.state.filters.rank, false);
         
         const btnSel = document.getElementById('btnSelectedOnly');
@@ -1500,6 +1869,19 @@
           }
         });
         if(render) this.renderAll();
+      }
+
+      setYearFilter(year, render = true) {
+        this.state.filters.year = year;
+        ['all', ...YEARS, 'none'].forEach(y => {
+          const btn = document.getElementById(`yearBtn-${y}`);
+          if (btn) btn.className = y === year
+            ? "px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-900 transition-all"
+            : "px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all";
+        });
+        const sel = document.getElementById('specialYearFilter');
+        if (sel) sel.value = year;
+        if (render) this.renderAll();
       }
 
       setWingFilter(wing, render = true) {
@@ -1554,94 +1936,117 @@
         this.renderAll();
       }
 
-      toggleCadetStatus(cadetId) {
+      // Every change names the event it applies to. Buttons pass their event id, so a click
+      // always updates the task it was drawn for, even if the open task changed meanwhile.
+      toggleCadetStatus(cadetId, eventId) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change cadet status.'); return; }
-        const rec = this.getCadetRecord(cadetId);
+        const ev = this.eventForAction(eventId);
+        if (!ev) return;
+        const rec = this.getCadetRecord(cadetId, ev);
         const cadet = this.state.cadets.find(c => c.id === cadetId);
         const wasDone = rec.done;
         rec.done = !rec.done;
-        if (rec.done) rec.completedAt = Date.now();
-        else rec.completedAt = null;
-        this.logHistory('status-change', cadetId, `${cadet ? cadet.name : cadetId}: ${wasDone ? 'Done → Pending' : 'Pending → Done'} on ${this.getActiveEvent()?.title || 'task'}`);
+        rec.completedAt = rec.done ? Date.now() : null;
+        this.logHistory('status-change', cadetId, `${cadet ? cadet.name : cadetId}: ${wasDone ? 'Done → Pending' : 'Pending → Done'} on ${ev.title || 'task'}`, ev.id);
         this.saveStorage();
         this.renderAll();
       }
 
-      promptReason(cadetId) {
+      promptReason(cadetId, eventId) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can add a reason.'); return; }
-        const rec = this.getCadetRecord(cadetId);
+        const ev = this.eventForAction(eventId);
         const cadet = this.state.cadets.find(c => c.id === cadetId);
-        const currentReason = rec.note || '';
-        const newReason = prompt(`Enter reason for ${cadet.rank} ${cadet.name} not participating:\n(Leave blank to clear reason)`, currentReason);
-        
-        if (newReason !== null) {
-          rec.note = newReason.trim();
-          this.saveStorage();
-          this.renderAll();
-        }
+        if (!ev || !cadet) return;
+        const currentReason = this.peekRecord(cadetId, ev).note || '';
+        const newReason = prompt(`Reason ${cadet.rank} ${cadet.name} is not taking part in “${ev.title}”:\n(Cadets with a reason are listed separately and not counted. Leave blank to clear.)`, currentReason);
+        if (newReason === null) return;
+        const rec = this.getCadetRecord(cadetId, ev);
+        const trimmed = newReason.trim();
+        if (trimmed === (rec.note || '')) return;
+        rec.note = trimmed;
+        // A reason means the cadet is not taking part, so it replaces a "done" mark.
+        if (trimmed && rec.done) { rec.done = false; rec.completedAt = null; }
+        this.logHistory(trimmed ? 'reason-set' : 'reason-cleared', cadetId, `${cadet.name}: ${trimmed ? 'reason “' + trimmed + '”' : 'reason cleared'} on ${ev.title}`, ev.id);
+        this.saveStorage();
+        this.renderAll();
+      }
+
+      /** Separate card listing cadets with a reason for the open task (not counted anywhere). */
+      renderExcusedList(list, ev) {
+        const host = document.getElementById('excusedListCard');
+        if (!host) return;
+        if (!ev || !list.length) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+        host.classList.remove('hidden');
+        host.innerHTML = `
+          <div class="bg-slate-800 px-4 sm:px-6 py-2.5 border-b border-slate-700 flex items-center justify-between gap-3">
+            <span class="text-[11px] font-black uppercase tracking-wider text-rose-300">Cadets with reason · not counted</span>
+            <span class="text-xs font-bold font-mono-num text-rose-300">${list.length}</span>
+          </div>
+          <div class="divide-y divide-slate-800/50">
+            ${list.map(c => `
+              <div class="px-4 sm:px-6 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="min-w-0 flex items-center gap-2 flex-wrap">
+                  <span class="px-1.5 py-0.5 rounded text-[10px] border font-mono font-bold ${(RANK_CONFIG[c.rank] || RANK_CONFIG.CDT).badgeClass}">${this.escape(c.rank || 'CDT')}</span>
+                  <span class="text-sm font-semibold text-white">${this.escape(c.name)}</span>
+                  <span class="text-[10px] font-bold text-slate-400">${this.escape(c.company)}</span>
+                  ${yearBadgeHtml(c.year)}
+                  <span class="text-xs text-rose-300">— ${this.escape(c.rec.note)}</span>
+                </div>
+                <button type="button" onclick="app.promptReason('${c.id}', '${ev.id}')" class="self-start sm:self-auto text-[11px] px-2.5 py-1 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Edit / clear reason</button>
+              </div>`).join('')}
+          </div>`;
       }
 
       bulkToggleVisible(markDone) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change bulk status.'); return; }
-        const ev = this.getActiveEvent();
+        const ev = this.eventForAction();
         if (!ev) return;
-        const isScoped = ev.scope && ev.scope !== 'All';
-        const q = this.state.filters.search.toLowerCase().trim();
-        let changed = 0;
         const now = Date.now();
-
+        // Cadets with a reason are not part of the task list, so bulk actions skip them.
         const eligible = this.state.cadets.filter(c => {
-          if (isScoped && c.company !== ev.scope) return false;
-          if (this.state.filters.company !== 'all' && c.company !== this.state.filters.company) return false;
-          if (this.state.filters.wing !== 'all' && c.wing !== this.state.filters.wing) return false;
-          if (this.state.filters.rank !== 'all' && c.rank !== this.state.filters.rank) return false;
-          if (this.state.filters.selectedOnly && !this.state.selectedCadets.has(c.id)) return false;
-          const rec = this.getCadetRecord(c.id);
-          if (this.state.filters.status === 'done' && !rec.done) return false;
-          if (this.state.filters.status === 'pending' && rec.done) return false;
-          const q = this.state.filters.search.toLowerCase().trim();
-          if (q && !c.name.toLowerCase().includes(q) && !(c.rank || '').toLowerCase().includes(q) && !(rec.note || '').toLowerCase().includes(q)) return false;
-          return true;
+          if (!this.matchesViewFilters(c, ev)) return false;
+          const status = this.cadetStatus(c.id, ev);
+          if (status === 'excused') return false;
+          if (this.state.filters.status === 'done' && status !== 'done') return false;
+          if (this.state.filters.status === 'pending' && status !== 'pending') return false;
+          return this.peekRecord(c.id, ev).done !== markDone;
         });
-        const affected = eligible.filter(c => this.getCadetRecord(c.id).done !== markDone).length;
-        if (!affected) { this.showToast('No cadet statuses need changing.'); return; }
-        if (!confirm(`${markDone ? 'Mark as DONE' : 'Clear to PENDING'} for ${affected} cadet(s) in the current filtered view?\n\nTask: ${ev.title}\nThis action will be recorded in history.`)) return;
+        if (!eligible.length) { this.showToast('No cadet statuses need changing.'); return; }
+        if (!confirm(`${markDone ? 'Mark as DONE' : 'Clear to PENDING'} for ${eligible.length} cadet(s) in the current filtered view?\n\nTask: ${ev.title}\nThis action will be recorded in history.`)) return;
         eligible.forEach(c => {
-          if (isScoped && c.company !== ev.scope) return;
-          if (this.state.filters.company !== 'all' && c.company !== this.state.filters.company) return;
-          if (this.state.filters.wing !== 'all' && c.wing !== this.state.filters.wing) return;
-          if (this.state.filters.rank !== 'all' && c.rank !== this.state.filters.rank) return;
-          if (this.state.filters.selectedOnly && !this.state.selectedCadets.has(c.id)) return;
-
-          const rec = this.getCadetRecord(c.id);
-          if (this.state.filters.status === 'done' && !rec.done) return;
-          if (this.state.filters.status === 'pending' && rec.done) return;
-
-          if (q) {
-            const matchesName = c.name.toLowerCase().includes(q);
-            const matchesRank = (c.rank || '').toLowerCase().includes(q);
-            const matchesNote = (rec.note || '').toLowerCase().includes(q);
-            if (!matchesName && !matchesRank && !matchesNote) return;
-          }
-
+          const rec = this.getCadetRecord(c.id, ev);
           rec.done = markDone;
           rec.completedAt = markDone ? now : null;
-          changed++;
         });
-
-        this.logHistory('bulk-status-change', null, `${markDone ? 'Marked done' : 'Cleared to pending'} for ${changed} cadets on ${ev.title}`);
+        this.logHistory('bulk-status-change', null, `${markDone ? 'Marked done' : 'Cleared to pending'} for ${eligible.length} cadets on ${ev.title}`, ev.id);
         this.saveStorage();
         this.renderAll();
-        this.showToast(markDone ? `Marked ${changed} cadets as Done` : `Cleared status for ${changed} cadets`);
+        this.showToast(markDone ? `Marked ${eligible.length} cadets as Done` : `Cleared status for ${eligible.length} cadets`);
+      }
+
+      /** WhatsApp text: pending cadets first, then (separately) the cadets with a reason. */
+      buildPendingMessage(cadets, ev) {
+        const pending = [], excused = [];
+        cadets.forEach(c => {
+          const rec = this.peekRecord(c.id, ev);
+          const status = recordStatus(rec);
+          if (status === 'pending') pending.push(`${c.rank || 'CDT'} ${c.name}`);
+          else if (status === 'excused') excused.push(`${c.rank || 'CDT'} ${c.name} – ${rec.note.trim()}`);
+        });
+        let message = `Pending List:\n`;
+        message += pending.length ? pending.map((line, i) => `${i + 1}. ${line}`).join('\n') + '\n' : 'None 🎉\n';
+        if (excused.length) message += `\nWith reason (not counted):\n` + excused.map((line, i) => `${i + 1}. ${line}`).join('\n') + '\n';
+        return { message, pending: pending.length, excused: excused.length };
       }
 
       copySmartPending() {
-        const ev = this.getActiveEvent();
-        const isScoped = ev.scope && ev.scope !== 'All';
-
+        const ev = this.eventForAction();
+        if (!ev) return;
+        if (ev.type === 'special') { this.copySpecialTeams(null, ev.id); return; }
+        const isScoped = (ev.scope && ev.scope !== 'All') || eventYears(ev).length > 0;
         if (this.state.filters.company !== 'all') {
           this.copyWhatsAppCompany(this.state.filters.company);
-        } else if (this.state.filters.wing !== 'all' || this.state.filters.rank !== 'all' || this.state.filters.search || this.state.filters.selectedOnly || isScoped) {
+        } else if (this.state.filters.wing !== 'all' || this.state.filters.year !== 'all' || this.state.filters.rank !== 'all' || this.state.filters.search || this.state.filters.selectedOnly || isScoped) {
           this.copyCurrentFilteredPending();
         } else {
           this.copyWhatsAppAll();
@@ -1649,118 +2054,40 @@
       }
 
       copyWhatsAppCompany(targetCompany) {
-        const ev = this.getActiveEvent();
+        const ev = this.eventForAction();
         if (!ev) return;
-
-        const pending = [];
-        this.state.cadets.forEach(c => {
-          if (c.company === targetCompany) {
-            const rec = this.getCadetRecord(c.id);
-            if (!rec.done) {
-              const rankLabel = c.rank || 'CDT';
-              pending.push({
-                line: `${rankLabel} ${c.name}`,
-                note: rec.note || ''
-              });
-            }
-          }
-        });
-
-        if (pending.length === 0) {
-          this.showToast(`All cadets in ${targetCompany} have completed this task!`);
-          return;
-        }
-
-        let message = `Pending List:\n`;
-        pending.forEach((item, idx) => {
-          message += `${idx + 1}. ${item.line}${item.note ? ' (' + item.note + ')' : ''}\n`;
-        });
-
-        this.copyToClipboard(message, `Copied ${targetCompany} pending list (${pending.length} cadets)!`);
+        const { message, pending, excused } = this.buildPendingMessage(this.eventCadets(ev).filter(c => c.company === targetCompany), ev);
+        if (!pending && !excused) { this.showToast(`All cadets in ${targetCompany} have completed this task!`); return; }
+        this.copyToClipboard(message, `Copied ${targetCompany} pending list (${pending} pending${excused ? `, ${excused} with reason` : ''})!`);
       }
 
       copyCurrentFilteredPending() {
-        const ev = this.getActiveEvent();
+        const ev = this.eventForAction();
         if (!ev) return;
-        const isScoped = ev.scope && ev.scope !== 'All';
-
-        const q = this.state.filters.search.toLowerCase().trim();
-        const pending = [];
-
-        this.state.cadets.forEach(c => {
-          if (isScoped && c.company !== ev.scope) return;
-          if (this.state.filters.company !== 'all' && c.company !== this.state.filters.company) return;
-          if (this.state.filters.wing !== 'all' && c.wing !== this.state.filters.wing) return;
-          if (this.state.filters.rank !== 'all' && c.rank !== this.state.filters.rank) return;
-          if (this.state.filters.selectedOnly && !this.state.selectedCadets.has(c.id)) return;
-
-          const rec = this.getCadetRecord(c.id);
-          if (rec.done) return;
-
-          if (q) {
-            const matchesName = c.name.toLowerCase().includes(q);
-            const matchesRank = (c.rank || '').toLowerCase().includes(q);
-            const matchesNote = (rec.note || '').toLowerCase().includes(q);
-            if (!matchesName && !matchesRank && !matchesNote) return;
-          }
-
-          const rankLabel = c.rank || 'CDT';
-          pending.push({
-            line: `${rankLabel} ${c.name}`,
-            note: rec.note || ''
-          });
-        });
-
-        if (pending.length === 0) {
-          this.showToast("No pending cadets in the current filtered view.");
-          return;
-        }
-
-        let message = `Pending List:\n`;
-        pending.forEach((item, idx) => {
-          message += `${idx + 1}. ${item.line}${item.note ? ' (' + item.note + ')' : ''}\n`;
-        });
-
-        this.copyToClipboard(message, `Copied filtered pending list (${pending.length} cadets)!`);
+        const { message, pending, excused } = this.buildPendingMessage(this.state.cadets.filter(c => this.matchesViewFilters(c, ev)), ev);
+        if (!pending && !excused) { this.showToast('No pending cadets in the current filtered view.'); return; }
+        this.copyToClipboard(message, `Copied filtered pending list (${pending} pending${excused ? `, ${excused} with reason` : ''})!`);
       }
 
       copyWhatsAppAll() {
-        const ev = this.getActiveEvent();
+        const ev = this.eventForAction();
         if (!ev) return;
-
-        const pendingByCompany = { Jessami: [], Kohima: [], Naushera: [] };
-        let totalPending = 0;
-
-        this.state.cadets.forEach(c => {
-          const rec = this.getCadetRecord(c.id);
-          if (!rec.done) {
-            totalPending++;
-            const coy = pendingByCompany[c.company] ? c.company : 'Jessami';
-            const rankLabel = c.rank || 'CDT';
-            pendingByCompany[coy].push(`${rankLabel} ${c.name}${rec.note ? ' (' + rec.note + ')' : ''}`);
-          }
-        });
-
-        if (totalPending === 0) {
-          this.showToast("All cadets have completed this requirement!");
-          return;
-        }
-
-        let message = `Pending List:\n`;
-        
-        let counter = 1;
-        ['Jessami', 'Kohima', 'Naushera'].forEach(coy => {
-          const list = pendingByCompany[coy];
-          list.forEach(line => {
-            message += `${counter}. ${line}\n`;
-            counter++;
-          });
-        });
-
-        this.copyToClipboard(message, `Copied WhatsApp broadcast (${totalPending} pending) to clipboard!`);
+        const order = { Jessami: 0, Kohima: 1, Naushera: 2 };
+        const cadets = this.eventCadets(ev).slice().sort((a, b) => (order[a.company] ?? 3) - (order[b.company] ?? 3));
+        const { message, pending, excused } = this.buildPendingMessage(cadets, ev);
+        if (!pending && !excused) { this.showToast('All cadets have completed this requirement!'); return; }
+        this.copyToClipboard(message, `Copied WhatsApp broadcast (${pending} pending${excused ? `, ${excused} with reason` : ''}) to clipboard!`);
       }
 
       copyToClipboard(text, successMessage) {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(() => this.showToast(successMessage)).catch(() => this.copyToClipboardFallback(text, successMessage));
+          return;
+        }
+        this.copyToClipboardFallback(text, successMessage);
+      }
+
+      copyToClipboardFallback(text, successMessage) {
         const ta = document.createElement("textarea");
         ta.value = text;
         ta.style.position = "fixed";
@@ -1778,14 +2105,18 @@
       }
 
       exportEventCSV() {
-        const ev = this.getActiveEvent();
+        const ev = this.eventForAction();
         if (!ev) return;
 
-        const headers = ["S.No", "Rank", "Cadet Name", "Wing", "Company", "Requirement", "Status", "Completed At", "Reason"];
-        const rows = this.state.cadets.map((c, idx) => {
-          const rec = this.getCadetRecord(c.id);
+        const isSpecial = ev.type === 'special';
+        const headers = ["S.No", "Rank", "Cadet Name", "Wing", "Year", "Company", ...(isSpecial ? ["Team", "Team Task"] : []), "Requirement", "Status", "Completed At", "Reason"];
+        const csvCell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const rows = this.eventCadets(ev).map((c, idx) => {
+          const team = isSpecial ? this.teamOfCadet(ev, c.id) : null;
+          const rec = this.peekRecord(c.id, ev);
           const isLate = ev.deadline && rec.completedAt && rec.completedAt > ev.deadline;
-          const statusText = rec.done ? (isLate ? "DONE (LATE)" : "DONE") : "PENDING";
+          const status = recordStatus(rec);
+          const statusText = status === 'done' ? (isLate ? "DONE (LATE)" : "DONE") : status === 'excused' ? "WITH REASON (NOT COUNTED)" : "PENDING";
           const completedStr = rec.completedAt ? this.formatDate(rec.completedAt) : "";
 
           return [
@@ -1793,7 +2124,9 @@
             c.rank || 'CDT',
             `"${c.name.replace(/"/g, '""')}"`,
             c.wing,
+            c.year || '',
             c.company,
+            ...(isSpecial ? [csvCell(team?.name), csvCell(team?.task)] : []),
             `"${ev.title.replace(/"/g, '""')}"`,
             `"${statusText}"`,
             `"${completedStr}"`,
@@ -1806,7 +2139,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `NCC_${ev.title.replace(/\s+/g, '_')}_Record.csv`;
+        a.download = `NCC_${ev.title.replace(/[^\w-]+/g, '_')}_Record.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1828,12 +2161,19 @@
         let lcplCount = 0, cdtCount = 0;
         let jCount = 0, kCount = 0, nCount = 0;
 
+        const yearFilter = document.getElementById('rosterYearFilter')?.value || 'all';
+        const yearCounts = { '1st': 0, '2nd': 0, '3rd': 0, none: 0 };
+        cadets.forEach(c => { yearCounts[YEARS.includes(c.year) ? c.year : 'none']++; });
+        const yc = document.getElementById('rosterYearCounts');
+        if (yc) yc.textContent = `1st: ${yearCounts['1st']} · 2nd: ${yearCounts['2nd']} · 3rd: ${yearCounts['3rd']} · not set: ${yearCounts.none}`;
+
         cadets.forEach((c, idx) => {
           const r = c.rank || 'CDT';
           if (r === 'LCPL') lcplCount++; else cdtCount++;
           if (c.company === 'Jessami') jCount++;
           else if (c.company === 'Kohima') kCount++;
           else nCount++;
+          if (!yearMatches(c, yearFilter)) return;
 
           const tr = document.createElement('tr');
           tr.className = "hover:bg-slate-800/50";
@@ -1851,6 +2191,12 @@
               <select onchange="app.updateCadetField('${c.id}', 'wing', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold ${c.wing === 'SD' ? 'text-sky-400' : 'text-rose-400'} focus:border-amber-500 focus:outline-none">
                 <option value="SD" ${c.wing === 'SD' ? 'selected' : ''}>SD</option>
                 <option value="SW" ${c.wing === 'SW' ? 'selected' : ''}>SW</option>
+              </select>
+            </td>
+            <td class="p-2">
+              <select onchange="app.updateCadetField('${c.id}', 'year', this.value)" class="w-full px-2 py-1 bg-slate-900 border ${c.year ? 'border-slate-700 text-violet-300' : 'border-amber-700/60 text-amber-400'} rounded-lg text-xs font-bold focus:border-amber-500 focus:outline-none" aria-label="Year">
+                <option value="" ${!YEARS.includes(c.year) ? 'selected' : ''}>Not set</option>
+                ${YEARS.map(y => `<option value="${y}" ${c.year === y ? 'selected' : ''}>${y}</option>`).join('')}
               </select>
             </td>
             <td class="p-2">
@@ -1877,6 +2223,23 @@
         document.getElementById('badgeCountNaushera').textContent = nCount;
       }
 
+      /** Roster modal: give every cadet currently shown (by the year filter) the chosen year. */
+      setYearForShown() {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit cadet details.'); return; }
+        const filter = document.getElementById('rosterYearFilter').value;
+        const year = document.getElementById('rosterYearBulk').value;
+        const shown = this.state.cadets.filter(c => yearMatches(c, filter) && c.year !== year);
+        if (!shown.length) { this.showToast('Nothing to change.'); return; }
+        if (!confirm(`Set ${shown.length} cadet(s) to ${year} year?`)) return;
+        shown.forEach(c => { c.year = year; });
+        this.logHistory('roster-year-set', null, `Set ${shown.length} cadet(s) to ${year} year`);
+        this.saveStorage();
+        this.renderModalRosterTable();
+        this.renderAll();
+        renderAvailabilityResults();
+        this.showToast(`${shown.length} cadet(s) set to ${year} year`);
+      }
+
       updateCadetField(id, field, value) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit cadet details.'); return; }
         const cadet = this.state.cadets.find(c => c.id === id);
@@ -1893,7 +2256,7 @@
         const newNum = this.state.cadets.length + 1;
         const newId = 'cadet-' + Date.now();
         this.state.cadets.push({
-          id: newId, rank: 'CDT', name: `Cadet ${newNum}`, wing: 'SD', company: 'Naushera'
+          id: newId, rank: 'CDT', name: `Cadet ${newNum}`, wing: 'SD', company: 'Naushera', year: ''
         });
         this.saveStorage();
         this.renderEventDropdown();
@@ -1934,6 +2297,7 @@
           const parts = line.split(',').map(p => p.trim());
           let rank = 'CDT', name = `Cadet ${i + 1}`, wing = 'SD', coy = 'Jessami';
 
+          const year = parts.length >= 5 ? parseYear(parts[4]) : '';
           if (parts.length >= 4) { rank = parts[0].toUpperCase(); name = parts[1]; wing = parts[2].toUpperCase(); coy = parts[3]; }
           else if (parts.length === 3) { name = parts[0]; wing = parts[1].toUpperCase(); coy = parts[2]; }
           else if (parts.length === 2) { name = parts[0]; wing = parts[1].toUpperCase(); }
@@ -1945,7 +2309,7 @@
           const matchedCoy = validCoys.find(c => c.toLowerCase() === coy.toLowerCase());
           coy = matchedCoy || validCoys[i % 3];
 
-          newCadets.push({ id: 'cadet-' + (i + 1) + '-' + Date.now(), rank, name, wing, company: coy });
+          newCadets.push({ id: 'cadet-' + (i + 1) + '-' + Date.now(), rank, name, wing, company: coy, year });
         });
 
         this.state.cadets = newCadets;
@@ -1963,6 +2327,7 @@
         document.getElementById('newEventTitleInput').value = '';
         document.getElementById('newEventDescInput').value = '';
         document.getElementById('newEventScopeInput').value = 'All';
+        this.setYearChecks('new', []);
         document.getElementById('newEventTypeInput').value = 'task';
         
         document.getElementById('newEventHasDeadline').checked = false;
@@ -1978,6 +2343,7 @@
         const title = document.getElementById('newEventTitleInput').value.trim();
         const desc = document.getElementById('newEventDescInput').value.trim();
         const scope = document.getElementById('newEventScopeInput').value;
+        const years = this.readYearChecks('new');
         const type = document.getElementById('newEventTypeInput').value;
         const hasDl = document.getElementById('newEventHasDeadline').checked;
         const dlVal = document.getElementById('newEventDeadlineInput').value;
@@ -1990,7 +2356,8 @@
         }
 
         const id = 'event-' + Date.now();
-        this.state.events.unshift({ id, title, description: desc, scope, type, deadline, archived: false, createdAt: Date.now(), records: {} });
+        if (!this.confirmYearScope(scope, years)) return;
+        this.state.events.unshift({ id, title, description: desc, scope, ...(years.length ? { years } : {}), type, deadline, archived: false, createdAt: Date.now(), records: {} });
         this.logHistory('task-created', null, `Created ${type === 'attendance' ? 'attendance event' : 'task'}: ${title}`);
         this.state.activeEventId = id;
         this.saveStorage();
@@ -2002,13 +2369,47 @@
         this.showToast(`Created: ${title}. It is now listed under Ongoing Tasks.`);
       }
 
+      // ---- Year scope for normal tasks (any combination of 1st/2nd/3rd; none or all = every year) ----
+      readYearChecks(prefix) {
+        return normalizeYears([...document.querySelectorAll(`#${prefix}EventYears input:checked`)].map(i => i.value));
+      }
+
+      setYearChecks(prefix, years) {
+        document.querySelectorAll(`#${prefix}EventYears input`).forEach(i => { i.checked = years.includes(i.value); });
+        this.updateTaskScopeHint(prefix);
+      }
+
+      /** Live summary under the year boxes: who the task will include, and who is left out for having no year. */
+      updateTaskScopeHint(prefix) {
+        const hint = document.getElementById(`${prefix}EventScopeHint`);
+        if (!hint) return;
+        const scope = document.getElementById(`${prefix}EventScopeInput`).value;
+        const years = this.readYearChecks(prefix);
+        const probe = { type: 'task', scope, years };
+        const included = this.state.cadets.filter(c => cadetInEvent(c, probe)).length;
+        const noYear = years.length ? this.state.cadets.filter(c => (scope === 'All' || c.company === scope) && !YEARS.includes(c.year)).length : 0;
+        hint.innerHTML = `Includes <b class="text-slate-300">${included}</b> cadet${included === 1 ? '' : 's'} (${escapeHtml(scopeText(scope, years))}).` +
+          (noYear ? ` <span class="text-amber-400">${noYear} cadet${noYear === 1 ? ' has' : 's have'} no year set and won't be included — set years in Manage roster.</span>` : '');
+      }
+
+      /** Ask before creating a year-specific task that would leave out cadets with no year set. */
+      confirmYearScope(scope, years) {
+        if (!years.length) return true;
+        const missing = this.state.cadets.filter(c => (scope === 'All' || c.company === scope) && !YEARS.includes(c.year));
+        if (!missing.length) return true;
+        return confirm(`${missing.length} cadet(s) in ${scope === 'All' ? 'the battalion' : scope} have no year set, so they won't be part of this ${years.join(' & ')} year task:\n\n${missing.slice(0, 12).map(c => c.name).join(', ')}${missing.length > 12 ? '…' : ''}\n\nContinue anyway? (You can set years in Manage roster.)`);
+      }
+
       openEditCurrentEventModal() {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit the task.'); return; }
-        const ev = this.getActiveEvent();
+        const ev = this.eventForAction();
         if (!ev) return;
+        if (ev.type === 'special') { this.openSpecialEventModal(null, ev.id); return; }
+        this.editingEventId = ev.id; // the save applies to this task, whatever is selected later
         document.getElementById('editEventTitleInput').value = ev.title;
         document.getElementById('editEventDescInput').value = ev.description || '';
         document.getElementById('editEventScopeInput').value = ev.scope || 'All';
+        this.setYearChecks('edit', eventYears(ev));
         document.getElementById('editEventTypeInput').value = ev.type || 'task';
 
         const dlCheckbox = document.getElementById('editEventHasDeadline');
@@ -2033,19 +2434,24 @@
       handleSaveEditedEvent(e) {
         e.preventDefault();
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can save task changes.'); return; }
-        const ev = this.getActiveEvent();
-        if (!ev) return;
+        const ev = this.eventForAction(this.editingEventId);
+        if (!ev) { this.closeModal('editEventModal'); return; }
         
+        const newScope = document.getElementById('editEventScopeInput').value;
+        const newYears = this.readYearChecks('edit');
+        if ((newScope !== (ev.scope || 'All') || newYears.join() !== eventYears(ev).join()) && !this.confirmYearScope(newScope, newYears)) return;
         ev.title = document.getElementById('editEventTitleInput').value.trim();
         ev.description = document.getElementById('editEventDescInput').value.trim();
-        ev.scope = document.getElementById('editEventScopeInput').value;
+        ev.scope = newScope;
+        if (newYears.length) ev.years = newYears; else delete ev.years;
         ev.type = document.getElementById('editEventTypeInput').value;
         
         const hasDl = document.getElementById('editEventHasDeadline').checked;
         const dlVal = document.getElementById('editEventDeadlineInput').value;
         ev.deadline = (hasDl && dlVal) ? new Date(dlVal).getTime() : null;
 
-        this.logHistory('task-edited', null, `Edited task: ${ev.title}`);
+        this.logHistory('task-edited', null, `Edited task: ${ev.title}`, ev.id);
+        this.editingEventId = null;
         this.saveStorage();
         this.closeModal('editEventModal');
         this.renderEventDropdown();
@@ -2053,26 +2459,450 @@
         this.showToast("Task updated successfully.");
       }
 
-      handleDeleteCurrentEventDirectly() {
+      handleDeleteCurrentEventDirectly(eventId) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can delete the task.'); return; }
+        const ev = this.eventForAction(eventId);
+        if (!ev) return;
         if (this.state.events.length <= 1) {
           this.showToast("Cannot delete the only existing task.");
           return;
         }
-        const title = this.getActiveEvent().title;
-        this.logHistory('task-deleted', null, `Permanently deleted task: ${title}`);
-        this.state.events = this.state.events.filter(e => e.id !== this.state.activeEventId);
-        this.state.activeEventId = this.state.events[0].id;
+        const title = ev.title;
+        this.logHistory('task-deleted', null, `Permanently deleted task: ${title}`, ev.id);
+        this.state.events = this.state.events.filter(e => e.id !== ev.id);
+        if (!this.state.events.some(e => e.id === this.state.activeEventId)) this.state.activeEventId = this.state.events[0].id;
+        this.editingEventId = null;
         this.saveStorage();
         this.closeModal('editEventModal');
+        this.closeModal('specialEventModal');
         this.renderEventDropdown();
         this.renderAll();
+        renderOngoingTasks();
+        showTaskMasterSection('home');
         this.showToast(`Deleted task: ${title}`);
       }
 
-      logHistory(action, cadetId, details) {
+      // ==================== SPECIAL EVENTS (custom teams) ====================
+      // Data model on the event: { type: 'special', scope: 'All', teams: [{ id, name, task, cadetIds: [] }], records: {...} }
+      // Per-cadet completion uses the same `records` as normal tasks, so archive, history and CSV keep working.
+
+      /** Cadets that belong to an event: team members for special events, otherwise the company scope. */
+      eventCadets(ev) {
+        if (!ev) return [];
+        if (ev.type === 'special') {
+          const members = new Set((ev.teams || []).flatMap(t => t.cadetIds || []));
+          return this.state.cadets.filter(c => members.has(c.id));
+        }
+        return this.state.cadets.filter(c => cadetInEvent(c, ev));
+      }
+
+      teamOfCadet(ev, cadetId) {
+        return (ev?.teams || []).find(t => (t.cadetIds || []).includes(cadetId)) || null;
+      }
+
+      teamMembers(team) {
+        const ids = new Set(team.cadetIds || []);
+        return this.state.cadets.filter(c => ids.has(c.id));
+      }
+
+      renderSpecialEventView(ev) {
+        const host = document.getElementById('specialEventView');
+        if (!host) return;
+        const esc = v => this.escape(v);
+        const evId = esc(ev.id);
+        const teams = ev.teams || [];
+        const all = this.eventCadets(ev);
+        const yearF = this.state.filters.year || 'all';
+        const inYear = c => yearMatches(c, yearF); // year filter narrows the cadets shown; team progress stays whole-team
+        // Cadets with a reason are not taking part: listed separately and left out of the counts.
+        const counted = all.filter(c => this.cadetStatus(c.id, ev) !== 'excused');
+        const excusedAll = all.filter(c => this.cadetStatus(c.id, ev) === 'excused');
+        const doneAll = counted.filter(c => this.cadetStatus(c.id, ev) === 'done').length;
+        const pctAll = counted.length ? Math.round(doneAll / counted.length * 100) : 0;
+
+        const summary = `
+          <div class="bg-slate-900 rounded-2xl border border-violet-500/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex-1">
+              <p class="text-[10px] font-black uppercase tracking-[.18em] text-violet-400">Special event</p>
+              <div class="mt-1 flex items-baseline gap-2"><span class="text-2xl font-black text-emerald-500 font-mono-num">${doneAll}</span><span class="text-xs text-slate-500 font-mono-num">/ ${counted.length} cadets done · ${teams.length} team${teams.length === 1 ? '' : 's'}${excusedAll.length ? ` · ${excusedAll.length} with reason (not counted)` : ''}</span><span class="text-xs font-black text-slate-400 ml-auto font-mono-num">${pctAll}%</span></div>
+              <div class="w-full bg-slate-800 h-2 rounded-full mt-2 overflow-hidden"><div class="bg-emerald-500 h-2 rounded-full transition-all" style="width:${pctAll}%"></div></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="text-[11px] text-slate-400">Year
+                <select id="specialYearFilter" onchange="app.setYearFilter(this.value)" class="ml-1 px-2 py-1.5 bg-slate-950 border border-slate-700 text-white rounded-lg text-xs">
+                  ${[['all', 'All'], ['1st', '1st'], ['2nd', '2nd'], ['3rd', '3rd'], ['none', 'Not set']].map(([v, l]) => `<option value="${v}" ${yearF === v ? 'selected' : ''}>${l}</option>`).join('')}
+                </select>
+              </label>
+              <button type="button" onclick="app.copySpecialTeams(null, '${evId}')" class="px-3 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">Copy all teams (WhatsApp)</button>
+              <button type="button" onclick="app.openSpecialEventModal(null, '${evId}')" class="px-3 py-2 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl">Edit teams</button>
+            </div>
+          </div>`;
+
+        if (!teams.length) {
+          host.innerHTML = summary + `<div class="border border-slate-800 bg-slate-900 rounded-2xl p-8 text-center text-sm text-slate-400">No teams yet. Use “Edit teams” to create teams and put cadets in them.</div>`;
+          return;
+        }
+
+        const coyBadge = coy => coy === 'Jessami' ? 'bg-amber-900/40 text-amber-400 border-amber-700/50' : coy === 'Kohima' ? 'bg-indigo-900/40 text-indigo-400 border-indigo-700/50' : 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
+        const nameBits = c => `
+                  <span class="px-1.5 py-0.5 rounded text-[10px] border font-mono font-bold ${(RANK_CONFIG[c.rank] || RANK_CONFIG.CDT).badgeClass}">${esc(c.rank || 'CDT')}</span>
+                  <span class="text-sm font-semibold text-white truncate">${esc(c.name)}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${coyBadge(c.company)}">${esc(c.company)}</span>
+                  ${yearBadgeHtml(c.year)}`;
+
+        const cards = teams.map((team, i) => {
+          const members = this.teamMembers(team);
+          const active = members.filter(c => this.cadetStatus(c.id, ev) !== 'excused');
+          const excused = members.filter(c => this.cadetStatus(c.id, ev) === 'excused');
+          const done = active.filter(c => this.cadetStatus(c.id, ev) === 'done').length;
+          const complete = active.length > 0 && done === active.length;
+          const pct = active.length ? Math.round(done / active.length * 100) : 0;
+          const memberRows = active.filter(inYear).map(c => {
+            const rec = this.peekRecord(c.id, ev);
+            const late = ev.deadline && rec.completedAt && rec.completedAt > ev.deadline;
+            return `<div class="flex items-center justify-between gap-2 py-2 border-t border-slate-800">
+                <div class="min-w-0 flex items-center gap-1.5 flex-wrap">${nameBits(c)}</div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button type="button" onclick="app.promptReason('${c.id}', '${evId}')" class="text-[11px] px-2 py-1 rounded-lg border border-dashed border-slate-700 text-slate-400 hover:bg-slate-800" title="Add a reason (cadet will not be counted)">Reason</button>
+                  <button type="button" onclick="app.toggleCadetStatus('${c.id}', '${evId}')" class="text-[11px] font-bold px-2.5 py-1 rounded-lg border ${rec.done ? (late ? 'bg-rose-600 border-rose-500 text-white' : 'bg-emerald-600 border-emerald-500 text-white') : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}">${rec.done ? (late ? '✓ Late' : '✓ Done') : '○ Mark'}</button>
+                  <span class="viewer-only text-[11px] font-bold ${rec.done ? (late ? 'text-rose-300' : 'text-emerald-300') : 'text-slate-500'}">${rec.done ? (late ? 'Done (late)' : 'Done') : 'Pending'}</span>
+                </div>
+              </div>`;
+          }).join('');
+          const excusedShown = excused.filter(inYear);
+          const excusedRows = excusedShown.length ? `
+              <div class="mt-1 rounded-xl border border-rose-900/50 bg-rose-950/20 px-3 py-2">
+                <p class="text-[10px] font-black uppercase tracking-wider text-rose-300">With reason · not counted (${excusedShown.length})</p>
+                ${excusedShown.map(c => `<div class="flex items-center justify-between gap-2 py-1.5">
+                    <div class="min-w-0 flex items-center gap-1.5 flex-wrap">${nameBits(c)}<span class="text-[11px] text-rose-300">— ${esc(this.peekRecord(c.id, ev).note)}</span></div>
+                    <button type="button" onclick="app.promptReason('${c.id}', '${evId}')" class="shrink-0 text-[11px] px-2 py-1 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Edit</button>
+                  </div>`).join('')}
+              </div>` : '';
+          return `<article class="bg-slate-900 rounded-2xl border ${complete ? 'border-emerald-600/50' : 'border-slate-800'} p-4 flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-[10px] font-black uppercase tracking-wider text-violet-400">Team ${i + 1}</p>
+                  <h3 class="text-lg font-extrabold text-white leading-tight">${esc(team.name || `Team ${i + 1}`)}</h3>
+                </div>
+                <span class="shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${complete ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50' : 'bg-slate-950 text-slate-400 border-slate-700'}">${complete ? 'Complete' : `${done}/${active.length} done`}</span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Assigned task</p>
+                <p class="text-sm text-slate-200 mt-1 whitespace-pre-wrap">${team.task ? esc(team.task) : '<span class="text-slate-500">No task written yet.</span>'}</p>
+              </div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-1.5 rounded-full" style="width:${pct}%"></div></div>
+              <div>${memberRows || `<p class="text-xs text-slate-500 py-2">${!members.length ? 'No cadets in this team.' : yearF !== 'all' && active.length ? `No ${yearF === 'none' ? 'cadets without a year' : yearF + ' year cadets'} doing the task in this team.` : 'Everyone in this team has a reason.'}</p>`}</div>
+              ${excusedRows}
+              <div class="flex flex-wrap gap-2 pt-1 mt-auto">
+                <button type="button" onclick="app.copySpecialTeams('${esc(team.id)}', '${evId}')" class="px-2.5 py-1.5 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg">Copy team</button>
+                ${active.length ? `<button type="button" onclick="app.setTeamDone('${esc(team.id)}', ${!complete}, '${evId}')" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg border ${complete ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-emerald-900/30 border-emerald-700/50 text-emerald-300'}">${complete ? 'Clear team' : 'Mark whole team done'}</button>` : ''}
+              </div>
+            </article>`;
+        }).join('');
+
+        host.innerHTML = summary + `<div class="grid md:grid-cols-2 gap-4">${cards}</div>`;
+      }
+
+      /** Find the special event a team belongs to (falls back to the open task). */
+      findTeamEvent(teamId, eventId) {
+        const ev = eventId ? this.findEvent(eventId) : this.state.events.find(e => (e.teams || []).some(t => t.id === teamId));
+        return ev && ev.type === 'special' ? ev : null;
+      }
+
+      setTeamDone(teamId, markDone, eventId) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change team status.'); return; }
+        const ev = this.findTeamEvent(teamId, eventId);
+        const team = (ev?.teams || []).find(t => t.id === teamId);
+        if (!team) return;
+        const now = Date.now();
+        let changed = 0;
+        this.teamMembers(team).forEach(c => {
+          if (this.cadetStatus(c.id, ev) === 'excused') return; // cadets with a reason are skipped
+          if (this.peekRecord(c.id, ev).done === markDone) return;
+          const rec = this.getCadetRecord(c.id, ev);
+          rec.done = markDone; rec.completedAt = markDone ? now : null; changed++;
+        });
+        if (!changed) return;
+        this.logHistory('team-status-change', null, `${markDone ? 'Marked done' : 'Cleared'} team ${team.name} (${changed} cadets) on ${ev.title}`, ev.id);
+        this.saveStorage();
+        this.renderAll();
+        this.showToast(markDone ? `${team.name}: marked ${changed} cadet(s) done` : `${team.name}: cleared`);
+      }
+
+      copySpecialTeams(teamId, eventId) {
+        const ev = teamId ? this.findTeamEvent(teamId, eventId) : this.eventForAction(eventId);
+        if (!ev || ev.type !== 'special') return;
+        const teams = (ev.teams || []).filter(t => !teamId || t.id === teamId);
+        if (!teams.length) { this.showToast('No teams to copy.'); return; }
+        let msg = `*${ev.title}*\n`;
+        if (ev.deadline) msg += `Deadline: ${this.formatDate(ev.deadline)}\n`;
+        if (ev.description && !teamId) msg += `${ev.description}\n`;
+        const excusedLines = [];
+        teams.forEach(team => {
+          msg += `\n*${team.name}*\n`;
+          if (team.task) msg += `Task: ${team.task}\n`;
+          let n = 0;
+          this.teamMembers(team).forEach(c => {
+            const rec = this.peekRecord(c.id, ev);
+            if (recordStatus(rec) === 'excused') { excusedLines.push(`${c.rank || 'CDT'} ${c.name} (${team.name}) – ${rec.note.trim()}`); return; }
+            msg += `${++n}. ${c.rank || 'CDT'} ${c.name} (${c.company})${rec.done ? ' ✅' : ''}\n`;
+          });
+        });
+        if (excusedLines.length) msg += `\nWith reason (not counted):\n` + excusedLines.map((l, i) => `${i + 1}. ${l}`).join('\n') + '\n';
+        this.copyToClipboard(msg.trim() + '\n', teamId ? `Copied ${teams[0].name}` : `Copied ${teams.length} team(s)`);
+      }
+
+      openSpecialEventModal(prefillTitle, editEventId) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can create or edit a special event.'); return; }
+        const ev = editEventId ? this.state.events.find(e => e.id === editEventId) : null;
+        const assignments = {};
+        (ev?.teams || []).forEach(t => (t.cadetIds || []).forEach(id => { assignments[id] = t.id; }));
+        this.specialDraft = {
+          editId: ev ? ev.id : null,
+          // Snapshot of the event when the editor opened, so saving can merge instead of overwrite.
+          base: ev ? { title: ev.title, description: ev.description || '', deadline: ev.deadline ?? null, teams: cloneData(ev.teams || []) } : null,
+          teams: ev ? (ev.teams || []).map(t => ({ id: t.id, name: t.name, task: t.task || '' })) : [
+            { id: this.newTeamId(), name: 'Team 1', task: '' },
+            { id: this.newTeamId(), name: 'Team 2', task: '' }
+          ],
+          assignments,
+          bulk: new Set()
+        };
+        document.getElementById('specialModalHeading').textContent = ev ? 'Edit special event' : 'New special event';
+        document.getElementById('specialSaveBtn').textContent = ev ? 'Save changes' : 'Create special event';
+        document.getElementById('specialTitleInput').value = ev ? ev.title : (prefillTitle || '');
+        document.getElementById('specialDescInput').value = ev ? (ev.description || '') : '';
+        const dlBox = document.getElementById('specialHasDeadline');
+        const dlInput = document.getElementById('specialDeadlineInput');
+        if (ev?.deadline) {
+          const d = new Date(ev.deadline);
+          dlBox.checked = true; dlInput.classList.remove('hidden');
+          dlInput.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        } else { dlBox.checked = false; dlInput.classList.add('hidden'); dlInput.value = ''; }
+        document.getElementById('specialAssignSearch').value = '';
+        document.getElementById('specialAssignCoy').value = 'all';
+        document.getElementById('specialAssignYear').value = 'all';
+        document.getElementById('specialAssignShow').value = 'all';
+        document.getElementById('specialModalError').classList.add('hidden');
+        this.renderSpecialTeams();
+        this.renderSpecialAssignList();
+        document.getElementById('specialEventModal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('specialTitleInput')?.focus(), 50);
+      }
+
+      newTeamId() {
+        return `team-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      }
+
+      renderSpecialTeams() {
+        const d = this.specialDraft; if (!d) return;
+        const host = document.getElementById('specialTeamsList');
+        const counts = {};
+        Object.values(d.assignments).forEach(tid => { counts[tid] = (counts[tid] || 0) + 1; });
+        host.innerHTML = d.teams.length ? d.teams.map((t, i) => `
+          <div class="border border-slate-700 bg-slate-950 rounded-xl p-3 space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black text-violet-400 font-mono-num">#${i + 1}</span>
+              <input type="text" value="${this.escape(t.name)}" maxlength="60" oninput="app.updateSpecialTeam('${t.id}', 'name', this.value)" onchange="app.renderSpecialAssignList()" placeholder="Team name" class="flex-1 min-w-0 px-2 py-1.5 bg-slate-900 border border-slate-700 text-white rounded-lg text-sm font-bold focus:outline-none focus:border-violet-500">
+              <span class="text-[11px] text-slate-400 font-mono-num whitespace-nowrap">${counts[t.id] || 0} cadet${(counts[t.id] || 0) === 1 ? '' : 's'}</span>
+              <button type="button" onclick="app.removeSpecialTeam('${t.id}')" class="text-slate-500 hover:text-rose-400 p-1" title="Remove team" aria-label="Remove team">✕</button>
+            </div>
+            <textarea rows="2" oninput="app.updateSpecialTeam('${t.id}', 'task', this.value)" placeholder="Task for this team, e.g. Set up the dais and seating by 06:30" class="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-xs focus:outline-none focus:border-violet-500">${this.escape(t.task)}</textarea>
+          </div>`).join('') : '<p class="text-xs text-slate-500 sm:col-span-2">No teams yet. Add one to start.</p>';
+      }
+
+      updateSpecialTeam(teamId, field, value) {
+        const t = this.specialDraft?.teams.find(x => x.id === teamId);
+        if (t) t[field] = value;
+      }
+
+      addSpecialTeam() {
+        const d = this.specialDraft; if (!d) return;
+        d.teams.push({ id: this.newTeamId(), name: `Team ${d.teams.length + 1}`, task: '' });
+        this.renderSpecialTeams();
+        this.renderSpecialAssignList();
+        const inputs = document.querySelectorAll('#specialTeamsList input[type="text"]');
+        inputs[inputs.length - 1]?.select();
+      }
+
+      removeSpecialTeam(teamId) {
+        const d = this.specialDraft; if (!d) return;
+        const t = d.teams.find(x => x.id === teamId);
+        const n = Object.values(d.assignments).filter(v => v === teamId).length;
+        if (n && !confirm(`Remove “${t?.name || 'this team'}”? Its ${n} cadet(s) will go back to “Not in a team”.`)) return;
+        d.teams = d.teams.filter(x => x.id !== teamId);
+        Object.keys(d.assignments).forEach(cid => { if (d.assignments[cid] === teamId) delete d.assignments[cid]; });
+        this.renderSpecialTeams();
+        this.renderSpecialAssignList();
+      }
+
+      teamOptionsHtml(selectedId, includeNone = true) {
+        const d = this.specialDraft;
+        return (includeNone ? `<option value="">— Not in a team —</option>` : '') +
+          d.teams.map((t, i) => `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${this.escape(t.name || `Team ${i + 1}`)}</option>`).join('');
+      }
+
+      renderSpecialAssignList() {
+        const d = this.specialDraft; if (!d) return;
+        const q = document.getElementById('specialAssignSearch').value.toLowerCase().trim();
+        const coy = document.getElementById('specialAssignCoy').value;
+        const year = document.getElementById('specialAssignYear').value;
+        const show = document.getElementById('specialAssignShow').value;
+        const list = this.state.cadets.filter(c => {
+          if (coy !== 'all' && c.company !== coy) return false;
+          if (!yearMatches(c, year)) return false;
+          const assigned = !!d.assignments[c.id];
+          if (show === 'assigned' && !assigned) return false;
+          if (show === 'unassigned' && assigned) return false;
+          if (q && !c.name.toLowerCase().includes(q) && !(c.rank || '').toLowerCase().includes(q)) return false;
+          return true;
+        });
+        this.specialVisibleIds = list.map(c => c.id);
+        const host = document.getElementById('specialAssignList');
+        host.innerHTML = list.length ? list.map(c => {
+          const tid = d.assignments[c.id] || '';
+          return `<div class="flex items-center gap-2 px-3 py-2 ${tid ? 'bg-violet-950/20' : ''}">
+              <input type="checkbox" class="cadet-cb shrink-0" ${d.bulk.has(c.id) ? 'checked' : ''} onchange="app.toggleSpecialBulk('${c.id}', this.checked)" aria-label="Tick ${this.escape(c.name)}">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-white truncate">${this.escape(c.rank || 'CDT')} ${this.escape(c.name)}</p>
+                <p class="text-[11px] text-slate-500">${this.escape(c.company)} · ${this.escape(c.wing)} · ${this.escape(yearLabel(c.year))}</p>
+              </div>
+              <select onchange="app.assignSpecialCadet('${c.id}', this.value)" class="w-36 sm:w-44 shrink-0 px-2 py-1.5 bg-slate-900 border ${tid ? 'border-violet-500/60 text-violet-200' : 'border-slate-700 text-slate-400'} rounded-lg text-xs">${this.teamOptionsHtml(tid)}</select>
+            </div>`;
+        }).join('') : '<p class="text-xs text-slate-500 p-4 text-center">No cadets match.</p>';
+        document.getElementById('specialBulkTeam').innerHTML = this.teamOptionsHtml(document.getElementById('specialBulkTeam').value || d.teams[0]?.id || '');
+        document.getElementById('specialBulkCount').textContent = d.bulk.size;
+        const assignedCount = Object.keys(d.assignments).filter(id => this.state.cadets.some(c => c.id === id)).length;
+        document.getElementById('specialAssignSummary').textContent = `${assignedCount} of ${this.state.cadets.length} cadets in teams`;
+      }
+
+      assignSpecialCadet(cadetId, teamId) {
+        const d = this.specialDraft; if (!d) return;
+        if (teamId) d.assignments[cadetId] = teamId; else delete d.assignments[cadetId];
+        this.renderSpecialTeams();
+        this.renderSpecialAssignList();
+      }
+
+      toggleSpecialBulk(cadetId, checked) {
+        const d = this.specialDraft; if (!d) return;
+        if (checked) d.bulk.add(cadetId); else d.bulk.delete(cadetId);
+        document.getElementById('specialBulkCount').textContent = d.bulk.size;
+      }
+
+      toggleSpecialBulkAll() {
+        const d = this.specialDraft; if (!d) return;
+        const ids = this.specialVisibleIds || [];
+        const allTicked = ids.length && ids.every(id => d.bulk.has(id));
+        ids.forEach(id => allTicked ? d.bulk.delete(id) : d.bulk.add(id));
+        this.renderSpecialAssignList();
+      }
+
+      applySpecialBulkAssign() {
+        const d = this.specialDraft; if (!d) return;
+        if (!d.bulk.size) { this.showToast('Tick some cadets first.'); return; }
+        const teamId = document.getElementById('specialBulkTeam').value;
+        d.bulk.forEach(id => { if (teamId) d.assignments[id] = teamId; else delete d.assignments[id]; });
+        const team = d.teams.find(t => t.id === teamId);
+        this.showToast(`${d.bulk.size} cadet(s) ${team ? 'moved to ' + team.name : 'removed from teams'}`);
+        d.bulk.clear();
+        this.renderSpecialTeams();
+        this.renderSpecialAssignList();
+      }
+
+      saveSpecialEvent() {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can save a special event.'); return; }
+        const d = this.specialDraft; if (!d) return;
+        const errBox = document.getElementById('specialModalError');
+        const fail = msg => { errBox.textContent = msg; errBox.classList.remove('hidden'); };
+        const title = document.getElementById('specialTitleInput').value.trim();
+        const description = document.getElementById('specialDescInput').value.trim();
+        const hasDl = document.getElementById('specialHasDeadline').checked;
+        const dlVal = document.getElementById('specialDeadlineInput').value;
+        if (!title) { fail('Give the event a title.'); document.getElementById('specialTitleInput').focus(); return; }
+        if (!d.teams.length) { fail('Add at least one team.'); return; }
+        const validIds = new Set(this.state.cadets.map(c => c.id));
+        const teams = d.teams.map((t, i) => ({
+          id: t.id,
+          name: (t.name || '').trim() || `Team ${i + 1}`,
+          task: (t.task || '').trim(),
+          cadetIds: this.state.cadets.filter(c => d.assignments[c.id] === t.id).map(c => c.id)
+        }));
+        // Keep cadets who are assigned but no longer on the active roster (preserves edits of older events).
+        Object.entries(d.assignments).forEach(([cid, tid]) => {
+          if (!validIds.has(cid)) teams.find(t => t.id === tid)?.cadetIds.push(cid);
+        });
+        if (!teams.some(t => t.cadetIds.length)) { fail('Put at least one cadet in a team.'); return; }
+        const names = teams.map(t => t.name.toLowerCase());
+        if (new Set(names).size !== names.length) { fail('Two teams have the same name. Give each team a different name.'); return; }
+        const deadline = hasDl && dlVal ? new Date(dlVal).getTime() : null;
+
+        if (d.editId) {
+          const ev = this.state.events.find(e => e.id === d.editId);
+          if (!ev) { fail('This event no longer exists.'); return; }
+          // Completion belongs to the team task a cadet was doing. Work out which cadets this
+          // edit moves, removes or adds, so their old records don't carry over.
+          const startTeamOf = {};
+          (d.base.teams || []).forEach(t => (t.cadetIds || []).forEach(id => { startTeamOf[id] = t.id; }));
+          const nameOf = id => this.state.cadets.find(c => c.id === id)?.name || id;
+          const rec = id => ev.records?.[id];
+          const moved = Object.keys(d.assignments).filter(id => startTeamOf[id] && startTeamOf[id] !== d.assignments[id] && rec(id)?.done);
+          const removed = Object.keys(startTeamOf).filter(id => !d.assignments[id] && rec(id));
+          const added = Object.keys(d.assignments).filter(id => !startTeamOf[id] && rec(id));
+          if (moved.length || removed.length) {
+            const lines = [];
+            if (moved.length) lines.push(`• ${moved.length} cadet(s) marked done are moving to another team. Their done mark will be cleared, because it was for their old team's task:\n   ${moved.map(nameOf).join(', ')}`);
+            if (removed.length) lines.push(`• ${removed.length} cadet(s) removed from the event will lose their done mark / reason for it:\n   ${removed.map(nameOf).join(', ')}`);
+            if (!confirm(`Save changes to “${title}”?\n\n${lines.join('\n\n')}`)) return;
+          }
+          // Merge this edit with anything that changed on the event while the editor was open
+          // (another editor's save, a live refresh). Only fields changed here are overwritten;
+          // records (done marks, reasons), id, createdAt and archive state are never touched.
+          const mine = { title, description, deadline, teams };
+          const current = { title: ev.title, description: ev.description || '', deadline: ev.deadline ?? null, teams: cloneData(ev.teams || []) };
+          const merged = mergeValue(d.base, mine, current);
+          // A cadet moved by this edit goes to the team chosen here, even if someone else moved them too.
+          const baseTeamOf = {};
+          (d.base.teams || []).forEach(t => (t.cadetIds || []).forEach(id => { baseTeamOf[id] = t.id; }));
+          Object.entries(d.assignments).forEach(([cid, tid]) => {
+            if (baseTeamOf[cid] === tid) return;
+            merged.teams.forEach(t => { t.cadetIds = (t.cadetIds || []).filter(id => id !== cid); if (t.id === tid) t.cadetIds.push(cid); });
+          });
+          Object.keys(baseTeamOf).forEach(cid => {
+            if (!d.assignments[cid]) merged.teams.forEach(t => { t.cadetIds = (t.cadetIds || []).filter(id => id !== cid); });
+          });
+          Object.assign(ev, { title: merged.title, description: merged.description, deadline: merged.deadline ?? null, teams: merged.teams, type: 'special', scope: 'All' });
+          if (!ev.records) ev.records = {};
+          moved.forEach(id => {
+            const r = ev.records[id]; if (!r) return;
+            r.done = false; r.completedAt = null; // keep a reason: it is about the whole event
+            this.logHistory('team-move-reset', id, `${nameOf(id)} moved team on ${ev.title}; done mark cleared`, ev.id);
+          });
+          removed.forEach(id => { delete ev.records[id]; this.logHistory('team-member-removed', id, `${nameOf(id)} removed from ${ev.title}; record cleared`, ev.id); });
+          added.forEach(id => { delete ev.records[id]; }); // leftovers from before they were in this event
+          normalizeEvent(ev);
+          this.state.activeEventId = ev.id;
+          this.logHistory('special-event-edited', null, `Edited special event: ${ev.title} (${ev.teams.length} teams)`, ev.id);
+          this.showToast('Special event updated.');
+        } else {
+          const id = 'event-' + Date.now();
+          this.state.events.unshift({ id, title, description, scope: 'All', type: 'special', deadline, teams, archived: false, createdAt: Date.now(), records: {} });
+          this.state.activeEventId = id;
+          this.logHistory('special-event-created', null, `Created special event: ${title} (${teams.length} teams)`, id);
+          this.showToast(`Created special event: ${title}`);
+        }
+        this.specialDraft = null;
+        this.saveStorage();
+        this.closeModal('specialEventModal');
+        this.state.selectedCadets.clear();
+        this.renderEventDropdown();
+        this.renderAll();
+        renderOngoingTasks();
+        showTaskMasterSection('workspace');
+      }
+
+      logHistory(action, cadetId, details, eventId) {
         if (!Array.isArray(this.state.history)) this.state.history = [];
-        this.state.history.unshift({ id: `hist-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, at: Date.now(), action, cadetId: cadetId || null, eventId: this.state.activeEventId || null, details });
+        this.state.history.unshift({ id: `hist-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, at: Date.now(), action, cadetId: cadetId || null, eventId: eventId || this.state.activeEventId || null, details });
         this.state.history = this.state.history.slice(0, 3000);
       }
 
@@ -2094,11 +2924,11 @@
             if (!Array.isArray(data.cadets) || !Array.isArray(data.events) || !data.events.length) throw new Error('Backup must contain cadets and at least one task.');
             if (!confirm(`Restore backup from ${data.exportedAt || 'unknown date'}? This replaces the current roster, tasks and history. Download a backup of the current data first if you may need it.`)) return;
             this.state.cadets = data.cadets;
-            this.state.events = data.events.map(ev => ({ ...ev, type: ev.type || 'task', archived: !!ev.archived, records: ev.records || {} }));
+            this.state.events = data.events.map(ev => normalizeEvent({ ...ev }));
             this.state.activeEventId = this.state.events.some(ev => ev.id === data.activeEventId) ? data.activeEventId : this.state.events[0].id;
             this.state.history = Array.isArray(data.history) ? data.history : [];
             this.state.selectedCadets.clear();
-            this.saveStorage(); this.renderEventDropdown(); this.renderAll();
+            this.saveStorage(); this.renderEventDropdown(); this.renderAll(); renderOngoingTasks(); renderAvailabilityResults();
             this.showToast('Backup restored successfully.');
           } catch (err) { alert(`Could not restore backup: ${err.message || 'Invalid JSON file'}`); }
         };
@@ -2108,12 +2938,14 @@
 
       toggleArchiveCurrentEvent() {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can archive or unarchive a task.'); return; }
-        const ev = this.getActiveEvent(); if (!ev) return;
+        const ev = this.eventForAction(); if (!ev) return;
         const next = !ev.archived;
         if (next && !confirm(`Archive “${ev.title}”? Its records will be preserved and it can be unarchived later.`)) return;
         ev.archived = next;
+        if (next) ev.archivedAt = Date.now(); else delete ev.archivedAt;
         this.logHistory(next ? 'task-archived' : 'task-unarchived', null, `${next ? 'Archived' : 'Unarchived'} task: ${ev.title}`);
-        this.saveStorage(); this.renderEventDropdown(); this.renderAll();
+        this.saveStorage(); this.renderEventDropdown(); this.renderAll(); renderOngoingTasks();
+        if (next) showTaskMasterSection('home');
         this.showToast(next ? 'Task archived. History preserved.' : 'Task unarchived.');
       }
 
@@ -2122,10 +2954,11 @@
         let count = 0;
         this.state.events.forEach(ev => {
           if (ev.archived) return;
-          const eligible = this.state.cadets.filter(c => !ev.scope || ev.scope === 'All' || c.company === ev.scope);
-          if (eligible.length && eligible.every(c => ev.records && ev.records[c.id] && ev.records[c.id].done)) { ev.archived = true; count++; this.logHistory('task-auto-archived', null, `Archived completed task: ${ev.title}`); }
+          // Complete = everyone taking part is done. Cadets with a reason don't count.
+          const counted = this.eventCadets(ev).filter(c => this.cadetStatus(c.id, ev) !== 'excused');
+          if (counted.length && counted.every(c => this.cadetStatus(c.id, ev) === 'done')) { ev.archived = true; ev.archivedAt = Date.now(); count++; this.logHistory('task-auto-archived', null, `Archived completed task: ${ev.title}`, ev.id); }
         });
-        if (count) { this.saveStorage(); this.renderEventDropdown(); this.renderAll(); }
+        if (count) { this.saveStorage(); this.renderEventDropdown(); this.renderAll(); renderOngoingTasks(); }
         this.showToast(count ? `Archived ${count} completed task(s).` : 'No fully completed tasks to archive.');
       }
 
@@ -2226,27 +3059,64 @@
       if (section === 'ongoing') { document.getElementById('taskOngoingPage')?.classList.remove('hidden'); renderOngoingTasks(); }
       if (section === 'workspace') document.getElementById('taskWorkspace')?.classList.remove('hidden');
     }
+    function toTime(value) {
+      if (value == null || value === '') return null;
+      const t = typeof value === 'number' ? value : new Date(value).getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+    // Outcome of one cadet for one task. The deadline only decides on-time vs late;
+    // whether someone failed to submit is decided by the task being closed (archived)
+    // or its deadline having passed, so tasks without a deadline are reported correctly too.
+    //   ontime / late – done (late only when finished after a deadline)
+    //   excused       – has a reason; not taking part and not counted
+    //   missing       – not done, and the task is archived or past its deadline
+    //   pending       – not done yet, task still open
     function taskOutcome(ev, cadet) {
-      const rec = (ev.records && ev.records[cadet.id]) || {};
-      if (rec.done) {
-        const deadline = ev.deadline ? new Date(ev.deadline).getTime() : null;
-        const submitted = rec.completedAt ? new Date(rec.completedAt).getTime() : null;
+      const rec = (ev.records && ev.records[cadet.id]) || EMPTY_RECORD;
+      const status = recordStatus(rec);
+      const deadline = toTime(ev.deadline);
+      if (status === 'done') {
+        const submitted = toTime(rec.completedAt);
         return deadline && submitted && submitted > deadline ? 'late' : 'ontime';
       }
-      if (ev.deadline && new Date(ev.deadline).getTime() < Date.now()) return 'missing';
+      if (status === 'excused') return 'excused';
+      if (ev.archived || (deadline && deadline < Date.now())) return 'missing';
       return 'pending';
+    }
+    function outcomeLabel(ev, outcome) {
+      const attendance = ev.type === 'attendance';
+      return {
+        ontime: attendance ? 'Attended' : (toTime(ev.deadline) ? 'On time' : 'Completed'),
+        late: attendance ? 'Attended late' : 'Late',
+        missing: attendance ? 'Absent' : 'Did not submit',
+        excused: 'With reason (not counted)',
+        pending: 'Pending'
+      }[outcome] || outcome;
     }
     function renderTaskArchive() {
       const host = document.getElementById('taskArchiveList'); if (!host || !app?.state) return;
       const company = document.getElementById('archiveCompanyFilter')?.value || 'All';
       const outcome = document.getElementById('archiveOutcomeFilter')?.value || 'all';
+      const year = document.getElementById('archiveYearFilter')?.value || 'all';
       const archived = (app.state.events || []).filter(ev => ev.archived);
+      const tone = { ontime: 'text-emerald-300', late: 'text-rose-300', missing: 'text-rose-300', excused: 'text-amber-300', pending: 'text-slate-400' };
       const cards = archived.map(ev => {
-        const eligible = (app.state.cadets || []).filter(c => !ev.scope || ev.scope === 'All' || c.company === ev.scope);
-        const rows = eligible.map(c => ({c, status:taskOutcome(ev,c)})).filter(x => outcome === 'all' || x.status === outcome).filter(x => company === 'All' || x.c.company === company);
-        const counts = {late:0,missing:0,ontime:0,pending:0}; eligible.filter(c => company === 'All' || c.company === company).forEach(c => counts[taskOutcome(ev,c)]++);
+        const eligible = app.eventCadets(ev).filter(c => (company === 'All' || c.company === company) && yearMatches(c, year));
+        const all = eligible.map(c => ({ c, status: taskOutcome(ev, c), rec: app.peekRecord(c.id, ev), team: ev.type === 'special' ? app.teamOfCadet(ev, c.id) : null }));
+        const rows = all.filter(x => outcome === 'all' || x.status === outcome);
+        const counts = { late: 0, missing: 0, ontime: 0, excused: 0, pending: 0 };
+        all.forEach(x => counts[x.status]++);
         if (outcome !== 'all' && !rows.length) return '';
-        return `<article class="border border-slate-800 bg-slate-900 p-4"><div class="flex flex-wrap justify-between gap-3"><div><h3 class="font-bold text-white">${escapeHtml(ev.title || 'Untitled task')} <span class="font-extrabold text-amber-300">· ${escapeHtml(ev.scope || 'All companies')}</span></h3><p class="text-xs text-slate-400 mt-1">${ev.deadline ? 'Deadline: '+escapeHtml(app.formatDate(ev.deadline)) : 'No deadline recorded'}</p></div><button class="px-3 py-2 border border-amber-700 text-amber-300 text-xs font-bold" onclick="unarchiveTaskById('${String(ev.id).replace(/'/g, '\&#39;')}')">Unarchive</button></div><div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-xs"><div class="bg-slate-950 p-2"><b class="text-rose-300">${counts.late}</b><div class="text-slate-400">Late</div></div><div class="bg-slate-950 p-2"><b class="text-rose-300">${counts.missing}</b><div class="text-slate-400">No submission</div></div><div class="bg-slate-950 p-2"><b class="text-emerald-300">${counts.ontime}</b><div class="text-slate-400">On time</div></div><div class="bg-slate-950 p-2"><b class="text-slate-300">${counts.pending}</b><div class="text-slate-400">Pending / no deadline</div></div></div>${rows.length ? `<details class="mt-3"><summary class="cursor-pointer text-xs text-slate-300">Show matching cadets (${rows.length})</summary><div class="mt-2 space-y-1">${rows.map(x=>`<div class="flex justify-between gap-3 text-xs border-t border-slate-800 py-2"><span class="text-slate-200">${escapeHtml(x.c.rank||'')} ${escapeHtml(x.c.name||'')}</span><span class="${x.status==='ontime'?'text-emerald-300':x.status==='late'||x.status==='missing'?'text-rose-300':'text-slate-400'}">${x.status==='ontime'?'On time':x.status==='late'?'Late':x.status==='missing'?'Did not submit':'Pending'}</span></div>`).join('')}</div></details>` : '<p class="text-xs text-slate-500 mt-3">No cadets match these filters.</p>'}</article>`;
+        const counted = counts.ontime + counts.late + counts.missing + counts.pending;
+        const tile = (n, key) => `<div class="bg-slate-950 p-2"><b class="${tone[key]}">${n}</b><div class="text-slate-400">${escapeHtml(outcomeLabel(ev, key))}</div></div>`;
+        const rowHtml = x => `<div class="flex justify-between gap-3 text-xs border-t border-slate-800 py-2"><span class="text-slate-200">${escapeHtml(x.c.rank || '')} ${escapeHtml(x.c.name || '')} <span class="text-slate-500">· ${escapeHtml(yearLabel(x.c.year))}</span>${x.team ? ` <span class="text-violet-300">· ${escapeHtml(x.team.name)}</span>` : ''}${x.status === 'excused' ? ` <span class="text-amber-300">— ${escapeHtml(x.rec.note)}</span>` : ''}</span><span class="${tone[x.status]} whitespace-nowrap">${escapeHtml(outcomeLabel(ev, x.status))}</span></div>`;
+        const countedRows = rows.filter(x => x.status !== 'excused');
+        const excusedRows = rows.filter(x => x.status === 'excused');
+        return `<article class="border border-slate-800 bg-slate-900 p-4">
+          <div class="flex flex-wrap justify-between gap-3"><div><h3 class="font-bold text-white">${escapeHtml(ev.title || 'Untitled task')} <span class="font-extrabold ${ev.type === 'special' ? 'text-violet-300' : 'text-amber-300'}">· ${escapeHtml(eventScopeLabel(ev))}</span></h3><p class="text-xs text-slate-400 mt-1">${ev.deadline ? 'Deadline: ' + escapeHtml(app.formatDate(ev.deadline)) : 'No deadline'}${ev.archivedAt ? ' · Archived ' + escapeHtml(app.formatDate(ev.archivedAt)) : ''} · ${counted} counted</p></div><button class="px-3 py-2 border border-amber-700 text-amber-300 text-xs font-bold" onclick="unarchiveTaskById('${escapeHtml(String(ev.id))}')">Unarchive</button></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-xs">${tile(counts.ontime, 'ontime')}${toTime(ev.deadline) ? tile(counts.late, 'late') : ''}${tile(counts.missing, 'missing')}${tile(counts.excused, 'excused')}${counts.pending ? tile(counts.pending, 'pending') : ''}</div>
+          ${rows.length ? `<details class="mt-3"><summary class="cursor-pointer text-xs text-slate-300">Show matching cadets (${rows.length})</summary><div class="mt-2 space-y-1">${countedRows.map(rowHtml).join('')}${excusedRows.length ? `<p class="text-[10px] font-black uppercase tracking-wider text-amber-300 pt-3">With reason · not counted (${excusedRows.length})</p>${excusedRows.map(rowHtml).join('')}` : ''}</div></details>` : '<p class="text-xs text-slate-500 mt-3">No cadets match these filters.</p>'}
+        </article>`;
       }).filter(Boolean);
       host.innerHTML = cards.join('') || '<div class="border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">No archived tasks match these filters.</div>';
     }
@@ -2264,13 +3134,163 @@
         if (ongoingPage && !ongoingPage.classList.contains('hidden')) showTaskMasterSection('home');
         return;
       }
-      const card = ev => `<button class="w-full text-left border border-slate-800 bg-slate-900 p-4 hover:border-amber-500" onclick="app.switchEvent('${String(ev.id).replace(/'/g, '\&#39;')}'); showTaskMasterSection('workspace')"><strong class="block text-white">${escapeHtml(ev.title||'Untitled task')} <span class="font-extrabold text-amber-300">· ${escapeHtml(ev.scope||'All companies')}</span></strong><span class="block text-xs text-slate-400 mt-1">${ev.deadline?'Deadline: '+escapeHtml(app.formatDate(ev.deadline)):'No deadline'}</span></button>`;
+      const card = ev => `<button class="w-full text-left border border-slate-800 bg-slate-900 p-4 hover:border-amber-500" onclick="app.switchEvent('${String(ev.id).replace(/'/g, '\&#39;')}'); showTaskMasterSection('workspace')"><strong class="block text-white">${escapeHtml(ev.title||'Untitled task')} <span class="font-extrabold ${ev.type==='special'?'text-violet-300':'text-amber-300'}">· ${escapeHtml(eventScopeLabel(ev))}</span></strong><span class="block text-xs text-slate-400 mt-1">${ev.deadline?'Deadline: '+escapeHtml(app.formatDate(ev.deadline)):'No deadline'}</span></button>`;
       host.innerHTML = events.map(card).join('');
     }
     function unarchiveTaskById(id) {
       if (!app?.canEdit?.()) { app?.showToast?.('Only approved editors can unarchive tasks.'); return; }
       const ev = (app.state.events||[]).find(e=>String(e.id)===String(id)); if (!ev) return;
-      ev.archived = false; app.logHistory?.('task-unarchived', null, `Unarchived task: ${ev.title}`); app.saveStorage(); app.renderEventDropdown(); app.renderAll(); renderTaskArchive(); renderOngoingTasks(); app.showToast('Task unarchived.');
+      ev.archived = false; delete ev.archivedAt; app.logHistory?.('task-unarchived', null, `Unarchived task: ${ev.title}`, ev.id); app.saveStorage(); app.renderEventDropdown(); app.renderAll(); renderTaskArchive(); renderOngoingTasks(); app.showToast('Task unarchived.');
+    }
+    // ==================== THREE-WAY MERGE FOR THE SHARED RECORD ====================
+    // base = the copy both sides started from, local = this browser, remote = the server.
+    // Whatever only one side changed is taken from that side; if both changed the same
+    // object, its fields are merged one by one. Lists of items with an `id` (cadets,
+    // events, teams, history) are merged per item, so additions from both sides are kept
+    // and deletions are respected.
+    function cloneData(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
+    function isPlainObject(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+    // Postgres jsonb reorders object keys, so compare structurally, and treat null/undefined as "not set".
+    function deepEqual(a, b) {
+      if (a === b) return true;
+      if (a == null || b == null) return a == null && b == null;
+      if (Array.isArray(a) || Array.isArray(b)) {
+        return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => deepEqual(x, b[i]));
+      }
+      if (isPlainObject(a) && isPlainObject(b)) {
+        for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) if (!deepEqual(a[k], b[k])) return false;
+        return true;
+      }
+      return false;
+    }
+    function mergeValue(base, local, remote) {
+      if (deepEqual(local, base)) return cloneData(remote);
+      if (deepEqual(remote, base) || deepEqual(local, remote)) return cloneData(local);
+      if (isPlainObject(local) && isPlainObject(remote)) {
+        const b = isPlainObject(base) ? base : {};
+        const out = {};
+        for (const k of new Set([...Object.keys(local), ...Object.keys(remote)])) {
+          const v = mergeValue(b[k], local[k], remote[k]);
+          if (v !== undefined) out[k] = v;
+        }
+        return out;
+      }
+      if (Array.isArray(local) && Array.isArray(remote)) {
+        const b = Array.isArray(base) ? base : [];
+        const all = [...b, ...local, ...remote];
+        if (all.every(x => isPlainObject(x) && x.id != null)) return mergeListById(b, local, remote);
+        if (all.every(x => x === null || typeof x !== 'object')) return mergePlainList(b, local, remote);
+      }
+      return cloneData(local); // same field changed on both sides: this browser's (latest) save wins
+    }
+    function mergeListById(base, local, remote) {
+      const byId = list => new Map(list.map(x => [String(x.id), x]));
+      const b = byId(base), l = byId(local), r = byId(remote);
+      const keep = id => {
+        if (l.has(id) && r.has(id)) return true;
+        if (l.has(id)) return !b.has(id); // remote deleted it (unless it is new here)
+        return !b.has(id);                // only remote has it: keep unless deleted here
+      };
+      const out = [];
+      remote.forEach(x => { const id = String(x.id); if (keep(id)) out.push(l.has(id) ? mergeValue(b.get(id), l.get(id), x) : cloneData(x)); });
+      // Items added only in this browser go in at the same position they have locally.
+      local.forEach((x, i) => { const id = String(x.id); if (!r.has(id) && keep(id)) out.splice(Math.min(i, out.length), 0, cloneData(x)); });
+      return out;
+    }
+    function mergePlainList(base, local, remote) {
+      const b = new Set(base), l = new Set(local), r = new Set(remote);
+      const out = remote.filter(x => !(b.has(x) && !l.has(x)));
+      local.forEach(x => { if (!b.has(x) && !r.has(x)) out.push(x); });
+      return out;
+    }
+    function mergeSharedState(base, local, remote) {
+      const pick = s => ({ cadets: s?.cadets || [], events: s?.events || [], history: s?.history || [] });
+      const merged = mergeValue(pick(base), pick(local), pick(remote));
+      merged.history = (merged.history || []).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3000);
+      merged.events = (merged.events || []).map(ev => normalizeEvent(ev));
+      return merged;
+    }
+    /** True when two saved states hold the same shared data (ignores which task is open). */
+    function stateEqual(a, b) {
+      return deepEqual({ cadets: a?.cadets, events: a?.events, history: a?.history }, { cadets: b?.cadets, events: b?.events, history: b?.history });
+    }
+
+    // Fill in fields missing from older saved data so every event has a consistent shape.
+    // Year of study. Stored on each cadet as '1st' | '2nd' | '3rd'; '' / missing = not set yet.
+    const YEARS = ['1st', '2nd', '3rd'];
+    function yearMatches(cadet, filter) {
+      if (!filter || filter === 'all') return true;
+      if (filter === 'none') return !YEARS.includes(cadet?.year);
+      return cadet?.year === filter;
+    }
+    function yearLabel(year) { return YEARS.includes(year) ? `${year} year` : 'Year not set'; }
+    function parseYear(text) {
+      const t = String(text || '').trim().toLowerCase();
+      if (/^(1|1st|i|first|fy)\b/.test(t)) return '1st';
+      if (/^(2|2nd|ii|second|sy)\b/.test(t)) return '2nd';
+      if (/^(3|3rd|iii|third|ty)\b/.test(t)) return '3rd';
+      return '';
+    }
+    function yearBadgeHtml(year) {
+      return YEARS.includes(year)
+        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-violet-900/30 text-violet-300 border-violet-700/50" title="Year of study">${year} yr</span>`
+        : `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-dashed border-slate-700 text-slate-500" title="Year not set">yr ?</span>`;
+    }
+    const EMPTY_RECORD = Object.freeze({ done: false, note: '', completedAt: null });
+    /** done = completed; excused = has a reason (not taking part, not counted); pending = neither. */
+    function recordStatus(rec) {
+      if (rec && rec.done) return 'done';
+      if (rec && rec.note && String(rec.note).trim()) return 'excused';
+      return 'pending';
+    }
+    function compactRecords(records) {
+      const out = {};
+      Object.entries(records || {}).forEach(([id, r]) => { if (r && (r.done || (r.note && String(r.note).trim()) || r.completedAt)) out[id] = r; });
+      return out;
+    }
+    function normalizeEvent(ev) {
+      if (!ev.type) ev.type = 'task';
+      if (typeof ev.archived !== 'boolean') ev.archived = false;
+      if (!ev.records || typeof ev.records !== 'object' || Array.isArray(ev.records)) ev.records = {};
+      // Untouched records carry no information; dropping them keeps saves and merges clean.
+      Object.keys(ev.records).forEach(id => {
+        const r = ev.records[id];
+        if (!r || (!r.done && !(r.note && String(r.note).trim()) && !r.completedAt)) delete ev.records[id];
+      });
+      // Years the task is limited to; left out entirely when it is for every year (keeps old data unchanged).
+      const years = ev.type === 'special' ? [] : normalizeYears(ev.years);
+      if (years.length) ev.years = years; else delete ev.years;
+      if (ev.type === 'special') {
+        ev.scope = 'All';
+        const placed = new Set(); // a cadet can only be in one team
+        ev.teams = Array.isArray(ev.teams) ? ev.teams.filter(t => t && t.id).map(t => ({
+          ...t,
+          cadetIds: (Array.isArray(t.cadetIds) ? t.cadetIds : []).filter(id => !placed.has(id) && placed.add(id))
+        })) : [];
+      }
+      return ev;
+    }
+    function eventScopeLabel(ev) {
+      if (ev.type === 'special') return `Special event · ${(ev.teams || []).length} team${(ev.teams || []).length === 1 ? '' : 's'}`;
+      return scopeText(ev.scope, eventYears(ev));
+    }
+    /** Years a task is limited to, in order. [] means every year (also when all three are ticked). */
+    function normalizeYears(years) {
+      const list = YEARS.filter(y => Array.isArray(years) && years.includes(y));
+      return list.length === YEARS.length ? [] : list;
+    }
+    function eventYears(ev) { return ev && ev.type !== 'special' ? normalizeYears(ev.years) : []; }
+    /** Is this cadet part of the task? Special events: team members. Others: company scope and year scope. */
+    function cadetInEvent(cadet, ev) {
+      if (!ev || !cadet) return false;
+      if (ev.type === 'special') return (ev.teams || []).some(t => (t.cadetIds || []).includes(cadet.id));
+      if (ev.scope && ev.scope !== 'All' && cadet.company !== ev.scope) return false;
+      const years = eventYears(ev);
+      return !years.length || years.includes(cadet.year);
+    }
+    function scopeText(scope, years) {
+      const coy = !scope || scope === 'All' ? 'All companies' : `${scope} Company`;
+      return years && years.length ? `${coy} · ${years.join(' & ')} year` : coy;
     }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
@@ -2309,7 +3329,9 @@
       const results = document.getElementById('availabilityResults');
       if (!results) return;
       // `app` is a top-level lexical binding, not a window property. Read it directly.
-      const activeCadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [...USER_EXACT_37_CADETS];
+      const allCadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [...USER_EXACT_37_CADETS];
+      const yearSel = document.getElementById('availabilityYear')?.value || 'all';
+      const activeCadets = allCadets.filter(c => yearMatches(c, yearSel));
       const day = document.getElementById('availabilityDay').value;
       const half = document.getElementById('availabilityHalf').value;
       const slot = day + half;
@@ -2318,10 +3340,10 @@
       const dayNames = {MON:'Monday',TUE:'Tuesday',WED:'Wednesday',THU:'Thursday',FRI:'Friday',SAT:'Saturday'};
       const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
       results.innerHTML = `<div class="flex items-center justify-between gap-3 mb-3"><div><h3 class="text-lg font-extrabold text-white">Available cadets</h3><p class="text-xs text-slate-500 mt-0.5">${dayNames[day]} · ${half === '1' ? 'First Half' : 'Second Half'}</p></div><span class="rounded-full bg-amber-500 text-slate-950 px-3 py-1.5 text-sm font-black">${available.length}</span></div>` +
-        (available.length ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">${available.map(c => `<div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3"><p class="text-sm font-bold text-white">${esc(c.name)}</p><p class="text-[11px] text-slate-500 mt-1">${esc(c.rank || 'CDT')} · ${esc(c.company || 'Company not set')}</p></div>`).join('')}</div>` : `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-center text-sm text-slate-400">No matched active cadets are marked free for this slot.</div>`);
+        (available.length ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">${available.map(c => `<div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3"><p class="text-sm font-bold text-white">${esc(c.name)}</p><p class="text-[11px] text-slate-500 mt-1">${esc(c.rank || 'CDT')} · ${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))}</p></div>`).join('')}</div>` : `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-center text-sm text-slate-400">No matched active cadets are marked free for this slot.</div>`);
       const unassignedEl = document.getElementById('availabilityUnassigned');
       document.getElementById('availabilityUnassignedCount').textContent = unassigned.length;
-      unassignedEl.innerHTML = unassigned.length ? unassigned.map(c => `<div class="rounded-lg bg-slate-950/60 border border-slate-800 px-3 py-2"><p class="text-sm font-semibold text-slate-200">${esc(c.name)}</p><p class="text-[11px] text-slate-500">${esc(c.company || 'Company not set')} · no schedule assigned</p></div>`).join('') : `<p class="text-xs text-slate-500">All active cadets have a matched schedule.</p>`;
+      unassignedEl.innerHTML = unassigned.length ? unassigned.map(c => `<div class="rounded-lg bg-slate-950/60 border border-slate-800 px-3 py-2"><p class="text-sm font-semibold text-slate-200">${esc(c.name)}</p><p class="text-[11px] text-slate-500">${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))} · no schedule assigned</p></div>`).join('') : `<p class="text-xs text-slate-500">All active cadets have a matched schedule.</p>`;
     }
 
     let app;
