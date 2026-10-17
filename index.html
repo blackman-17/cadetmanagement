@@ -40,8 +40,6 @@
       --brass: #C99A35; --brass-hi: #E5C46C; --red: #C8102E; --sky: #6CB4E4;
       --spring: cubic-bezier(.34, 1.56, .64, 1);
       --snap: cubic-bezier(.2, .8, .2, 1);
-      --gx: 50vw; --gy: 30vh;       /* pointer, for the grid light */
-      --lx: 50vw; --ly: 30vh;       /* smoothed pointer, for the trailing glow */
     }
     html { background: var(--navy); }
     body {
@@ -64,21 +62,10 @@
     [class*="tracking-wide"], [class*="tracking-wider"], [class*="tracking-widest"], [class*="tracking-[."] { letter-spacing: 0 !important; }
     .text-\[10px\] { font-size: 11px !important; }
 
-    /* Background: a map-reference grid that lights up around the pointer, and a brass glow that trails it. */
-    #fxGrid, #fxGridLit, #fxGlow { position: fixed; pointer-events: none; z-index: 0; }
-    #fxGrid, #fxGridLit { inset: 0;
-      background-image: linear-gradient(rgba(108,180,228,var(--a)) 1px, transparent 1px), linear-gradient(90deg, rgba(108,180,228,var(--a)) 1px, transparent 1px);
-      background-size: 44px 44px; background-position: -1px -1px; }
-    #fxGrid { --a: .035; }
-    #fxGridLit { --a: .16;
-      -webkit-mask-image: radial-gradient(360px circle at var(--gx) var(--gy), #000 0%, rgba(0,0,0,.35) 40%, transparent 72%);
-              mask-image: radial-gradient(360px circle at var(--gx) var(--gy), #000 0%, rgba(0,0,0,.35) 40%, transparent 72%); }
-    #fxGlow { left: 0; top: 0; width: 720px; height: 720px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(201,154,53,.13) 0%, rgba(201,154,53,.04) 35%, transparent 65%);
-      transform: translate3d(calc(var(--lx) - 360px), calc(var(--ly) - 360px), 0); will-change: transform; }
+    /* Background: a map-reference grid, drawn on a canvas so it can bend like a lens around the pointer. */
+    #fxGrid { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
     body > header, body > main, body > footer { position: relative; z-index: 1; }
 
-    @media (pointer: coarse) { #fxGlow, #fxGridLit { display: none; } }
     /* Header: frosted navy with the NCC tricolour as its bottom rule. */
     body > header { background: rgba(12,22,38,.78) !important; box-shadow: none !important; border-bottom: 0 !important; }
     body > header::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
@@ -94,9 +81,7 @@
       background: currentColor; opacity: .28; transform: scale(0); animation: fxRipple .55s var(--snap) forwards; }
     @keyframes fxRipple { to { transform: scale(var(--rip, 30)); opacity: 0; } }
 
-    /* Surfaces: a soft light follows the pointer across panels and cards. */
-    [class*="bg-slate-900"][class*="border"], .module-card, .tool-row {
-      background-image: radial-gradient(420px circle at var(--px, -999px) var(--py, -999px), rgba(201,154,53,.075), transparent 55%); }
+    /* Surfaces */
     [class*="bg-slate-900"][class*="border"]:hover, .module-card:hover { border-color: #34496B; }
 
     /* Task Master tiles */
@@ -162,7 +147,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0ms !important; transition-duration: .001ms !important; }
-      #fxGlow, #fxGridLit { display: none !important; }
+      #fxGrid { opacity: .6; }
     }
 
     .badge-check { transition: background-color .18s var(--snap), border-color .18s var(--snap), scale .45s var(--spring); }
@@ -4098,9 +4083,88 @@
         el.innerHTML = [...text].map((ch, i) => `<span class="ch" aria-hidden="true" style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
       });
 
-      // Layers: dim grid, lit grid around the pointer, trailing glow.
-      const layer = (id) => { const d = document.createElement('div'); d.id = id; d.setAttribute('aria-hidden', 'true'); document.body.prepend(d); return d; };
-      layer('fxGridLit'); layer('fxGlow'); layer('fxGrid');
+      // ---- Background grid: 44px map-reference squares; around the pointer the lines bend
+      // outward like a magnifying lens and get brighter. Drawn on one canvas, only redrawn
+      // while something is moving.
+      const canvas = document.createElement('canvas');
+      canvas.id = 'fxGrid';
+      canvas.setAttribute('aria-hidden', 'true');
+      document.body.prepend(canvas);
+      const ctx = canvas.getContext('2d');
+      const GRID = { cell: 44, radius: 190, strength: 0.85, lightRadius: 340 };
+      const lens = { x: innerWidth / 2, y: innerHeight / 3, tx: innerWidth / 2, ty: innerHeight / 3, s: 0, ts: 0 };
+      let gridW = 0, gridH = 0, gridRunning = false;
+
+      function sizeGrid() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        gridW = innerWidth; gridH = innerHeight;
+        canvas.width = Math.round(gridW * dpr); canvas.height = Math.round(gridH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawGrid();
+      }
+
+      // Lens: a point at distance r from the centre moves out to R·g(r/R), g(t) = t + k·t·(1−t)².
+      // g is increasing for k < 3, so lines never cross; centre magnification is 1 + k.
+      function warp(px, py) {
+        if (lens.s < 0.001) return [px, py];
+        const dx = px - lens.x, dy = py - lens.y, r = Math.hypot(dx, dy), R = GRID.radius;
+        if (r >= R || r === 0) return [px, py];
+        const t = r / R, k = GRID.strength * lens.s;
+        const f = (t + k * t * (1 - t) * (1 - t)) / t;
+        return [lens.x + dx * f, lens.y + dy * f];
+      }
+
+      function strokeLines(style) {
+        ctx.strokeStyle = style;
+        ctx.beginPath();
+        const c = GRID.cell, R = GRID.radius, step = 6;
+        const near = lens.s > 0.001;
+        // Vertical lines
+        for (let x = 0.5; x <= gridW + 1; x += c) {
+          if (near && Math.abs(x - lens.x) < R) {
+            const y0 = Math.max(0, lens.y - R), y1 = Math.min(gridH, lens.y + R);
+            ctx.moveTo(x, 0); ctx.lineTo(x, y0);
+            for (let y = y0; y <= y1; y += step) { const [wx, wy] = warp(x, y); ctx.lineTo(wx, wy); }
+            ctx.lineTo(x, y1); ctx.lineTo(x, gridH);
+          } else { ctx.moveTo(x, 0); ctx.lineTo(x, gridH); }
+        }
+        // Horizontal lines
+        for (let y = 0.5; y <= gridH + 1; y += c) {
+          if (near && Math.abs(y - lens.y) < R) {
+            const x0 = Math.max(0, lens.x - R), x1 = Math.min(gridW, lens.x + R);
+            ctx.moveTo(0, y); ctx.lineTo(x0, y);
+            for (let x = x0; x <= x1; x += step) { const [wx, wy] = warp(x, y); ctx.lineTo(wx, wy); }
+            ctx.lineTo(x1, y); ctx.lineTo(gridW, y);
+          } else { ctx.moveTo(0, y); ctx.lineTo(gridW, y); }
+        }
+        ctx.stroke();
+      }
+
+      function drawGrid() {
+        ctx.clearRect(0, 0, gridW, gridH);
+        ctx.lineWidth = 1;
+        strokeLines('rgba(108,180,228,.035)');           // the faint grid everywhere
+        if (lens.s > 0.001) {                             // brighter lines around the pointer
+          const g = ctx.createRadialGradient(lens.x, lens.y, 0, lens.x, lens.y, GRID.lightRadius);
+          g.addColorStop(0, `rgba(108,180,228,${(0.15 * lens.s).toFixed(3)})`);
+          g.addColorStop(0.4, `rgba(108,180,228,${(0.055 * lens.s).toFixed(3)})`);
+          g.addColorStop(0.72, 'rgba(108,180,228,0)');
+          strokeLines(g);
+        }
+      }
+
+      function gridFrame() {
+        lens.x += (lens.tx - lens.x) * 0.18;
+        lens.y += (lens.ty - lens.y) * 0.18;
+        lens.s += (lens.ts - lens.s) * 0.12;
+        drawGrid();
+        const moving = Math.abs(lens.tx - lens.x) + Math.abs(lens.ty - lens.y) > 0.2 || Math.abs(lens.ts - lens.s) > 0.002;
+        if (moving) requestAnimationFrame(gridFrame); else { gridRunning = false; }
+      }
+      const kickGrid = () => { if (!gridRunning) { gridRunning = true; requestAnimationFrame(gridFrame); } };
+
+      window.addEventListener('resize', sizeGrid);
+      sizeGrid();
 
       // Press feedback: ripple from the exact point you pressed.
       document.addEventListener('pointerdown', e => {
@@ -4119,37 +4183,22 @@
         setTimeout(() => dot.remove(), 600);
       }, { passive: true });
 
-      if (reduce) return;
+      if (reduce || !fine) return; // static grid for reduced motion and touch screens
 
-      // Pointer tracking. Raw position drives the grid light; the smoothed position drives the glow.
-      let mx = innerWidth / 2, my = innerHeight / 3, gx = mx, gy = my, running = false, seen = false;
-      let tiltEl = null, magnetEl = null, spotEl = null;
+      let tiltEl = null, magnetEl = null;
       const PRIMARY = /\bbg-(amber|emerald|violet)-(500|600)\b/;
 
-      function frame() {
-        gx += (mx - gx) * 0.08; gy += (my - gy) * 0.08;   // slow, floaty glow
-        root.style.setProperty('--lx', gx + 'px'); root.style.setProperty('--ly', gy + 'px');
-        if (Math.abs(mx - gx) + Math.abs(my - gy) > 0.3) requestAnimationFrame(frame);
-        else running = false;
-      }
-      const kick = () => { if (!running) { running = true; requestAnimationFrame(frame); } };
 
       function resetTilt(el) { if (el) { el.style.transform = ''; } }
       function resetMagnet(el) { if (el) { el.style.translate = ''; } }
 
       document.addEventListener('pointermove', e => {
         if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
-        mx = e.clientX; my = e.clientY;
-        root.style.setProperty('--gx', mx + 'px'); root.style.setProperty('--gy', my + 'px');
-        if (!seen && fine) { seen = true; gx = mx; gy = my; }
-        kick();
+        if (lens.ts === 0 && lens.s < 0.01) { lens.x = e.clientX; lens.y = e.clientY; } // appear where the pointer is
+        lens.tx = e.clientX; lens.ty = e.clientY; lens.ts = 1;
+        kickGrid();
 
         const t = e.target instanceof Element ? e.target : null;
-
-        // Light that follows the pointer across the panel/card under it.
-        const spot = t && t.closest('.tool-row, .module-card, [class*="bg-slate-900"][class*="border"]');
-        if (spot !== spotEl) { if (spotEl) { spotEl.style.removeProperty('--px'); spotEl.style.removeProperty('--py'); } spotEl = spot; }
-        if (spot) { const r = spot.getBoundingClientRect(); spot.style.setProperty('--px', (e.clientX - r.left) + 'px'); spot.style.setProperty('--py', (e.clientY - r.top) + 'px'); }
 
         // Task Master tiles lean toward the pointer.
         const tile = t && t.closest('.module-card');
@@ -4171,7 +4220,8 @@
         }
       }, { passive: true });
 
-      document.addEventListener('pointerleave', () => { seen = false; resetTilt(tiltEl); tiltEl = null; resetMagnet(magnetEl); magnetEl = null; });
+      document.documentElement.addEventListener('mouseleave', () => { lens.ts = 0; kickGrid(); });
+      document.addEventListener('pointerleave', () => { lens.ts = 0; kickGrid(); resetTilt(tiltEl); tiltEl = null; resetMagnet(magnetEl); magnetEl = null; });
       window.addEventListener('blur', () => { resetTilt(tiltEl); tiltEl = null; resetMagnet(magnetEl); magnetEl = null; });
     })();
 
