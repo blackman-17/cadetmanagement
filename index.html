@@ -6,42 +6,183 @@
   <title>CadetFlow | NCC Roster</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Design tokens: Tailwind's default palettes are remapped so every existing utility
+    // class picks up the CadetFlow look (navy base, brass actions, NCC red, sky focus).
+    window.tailwind = window.tailwind || {}; // stays harmless if the Tailwind CDN failed to load
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Instrument Sans', 'system-ui', 'sans-serif'],
+            mono: ['Instrument Sans', 'system-ui', 'sans-serif']
+          },
+          borderRadius: { md: '6px', lg: '8px', xl: '10px', '2xl': '14px' },
+          colors: {
+            slate:   { 50: '#F5F7FA', 100: '#EDF1F6', 200: '#DCE3EC', 300: '#BCC8D8', 400: '#91A3BC', 500: '#6B7F9C', 600: '#3E5476', 700: '#2A3D5C', 800: '#1B2B45', 900: '#132036', 950: '#0C1626' },
+            amber:   { 50: '#FBF6E8', 100: '#F6EAC6', 200: '#EED793', 300: '#E5C46C', 400: '#D9B04F', 500: '#C99A35', 600: '#A97F27', 700: '#86631F', 800: '#5F4618', 900: '#3D2D10', 950: '#231A09' },
+            rose:    { 50: '#FDF0F2', 100: '#FAD9DE', 200: '#F4B3BD', 300: '#EE8D9B', 400: '#E65D72', 500: '#D93049', 600: '#C8102E', 700: '#9C0C24', 800: '#72091A', 900: '#4A0611', 950: '#2C030A' },
+            emerald: { 50: '#EEF8F3', 100: '#D3EEE1', 200: '#A6DCC3', 300: '#77C8A3', 400: '#4FB286', 500: '#35996E', 600: '#287C58', 700: '#1F6046', 800: '#174734', 900: '#0F3024', 950: '#081B14' },
+            indigo:  { 50: '#EEF6FC', 100: '#D6EAF8', 200: '#AED5F1', 300: '#86C0E9', 400: '#6CB4E4', 500: '#4C98CF', 600: '#367BB0', 700: '#2A5F89', 800: '#204763', 900: '#163044', 950: '#0C1C29' },
+            violet:  { 50: '#F3F1FC', 100: '#E3DEF8', 200: '#C8BEF1', 300: '#AC9EE8', 400: '#9483DE', 500: '#7C69D2', 600: '#6553B6', 700: '#4E4090', 800: '#392F69', 900: '#251F44', 950: '#161228' }
+          }
+        }
+      }
+    };
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    /* Square-edged controls: practical dashboard, not pill-shaped template UI. */
-    button, select { border-radius: 4px !important; }
-    button { transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
-    button:hover { transform: translateY(-1px); }
-    button:active { transform: translateY(0); }
-    .module-card { border:1px solid #334155; background:#0f172a; transition:border-color .18s ease, background .18s ease, transform .18s ease; }
-    .module-card:hover { border-color:#f59e0b; background:#172033; transform:translateY(-2px); }
-    .module-card:focus-visible { outline:2px solid #fbbf24; outline-offset:3px; }
-    .cf-page-tab[aria-selected="true"] { background:#f59e0b; color:#020617; border-color:#f59e0b; }
-    .cf-page-tab[aria-selected="false"] { background:#0f172a; color:#cbd5e1; border-color:#334155; }
-    .cf-page-tab:focus-visible { outline:2px solid #fbbf24; outline-offset:2px; }
-    .font-mono-num { font-family: 'JetBrains Mono', monospace; }
-    .af-chip { padding: .25rem .625rem; border: 1px solid #334155; background: #1e293b; color: #cbd5e1; font-weight: 600; }
-    .af-chip:hover { background: #334155; }
-    .af-chip[aria-pressed="true"] { background: #f59e0b; border-color: #f59e0b; color: #0f172a; font-weight: 800; }
-    .badge-check { transition: all 0.15s ease-in-out; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0f172a; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    
+    :root {
+      --navy: #0C1626; --surface: #132036; --raised: #1B2B45; --line: #2A3D5C;
+      --ink: #EDF1F6; --muted: #91A3BC;
+      --brass: #C99A35; --brass-hi: #E5C46C; --red: #C8102E; --sky: #6CB4E4;
+      --spring: cubic-bezier(.34, 1.56, .64, 1);
+      --snap: cubic-bezier(.2, .8, .2, 1);
+      --gx: 50vw; --gy: 30vh;       /* pointer, for the grid light */
+      --lx: 50vw; --ly: 30vh;       /* smoothed pointer, for the trailing glow */
+    }
+    html { background: var(--navy); }
+    body {
+      font-family: 'Instrument Sans', system-ui, sans-serif;
+      letter-spacing: -0.003em;
+      background: var(--navy);
+    }
+    ::selection { background: rgba(201,154,53,.35); color: #fff; }
+    :focus-visible { outline: 2px solid var(--sky) !important; outline-offset: 2px; }
+
+    /* Quiet type: one sans, normal width, weights kept light. */
+    h1, h2, h3 { letter-spacing: -0.015em; text-wrap: balance; }
+    .font-black { font-weight: 650 !important; }
+    .font-extrabold { font-weight: 600 !important; }
+    .font-bold { font-weight: 560 !important; }
+    .font-mono-num, .font-mono { font-family: 'Instrument Sans', system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+    /* No shouty all-caps labels: sentence case, normal spacing. */
+    .uppercase { text-transform: none !important; }
+    [class*="tracking-wide"], [class*="tracking-wider"], [class*="tracking-widest"], [class*="tracking-[."] { letter-spacing: 0 !important; }
+    .text-\[10px\] { font-size: 11px !important; }
+
+    /* Background: a map-reference grid that lights up around the pointer, and a brass glow that trails it. */
+    #fxGrid, #fxGridLit, #fxGlow { position: fixed; pointer-events: none; z-index: 0; }
+    #fxGrid, #fxGridLit { inset: 0;
+      background-image: linear-gradient(rgba(108,180,228,var(--a)) 1px, transparent 1px), linear-gradient(90deg, rgba(108,180,228,var(--a)) 1px, transparent 1px);
+      background-size: 44px 44px; background-position: -1px -1px; }
+    #fxGrid { --a: .035; }
+    #fxGridLit { --a: .16;
+      -webkit-mask-image: radial-gradient(360px circle at var(--gx) var(--gy), #000 0%, rgba(0,0,0,.35) 40%, transparent 72%);
+              mask-image: radial-gradient(360px circle at var(--gx) var(--gy), #000 0%, rgba(0,0,0,.35) 40%, transparent 72%); }
+    #fxGlow { left: 0; top: 0; width: 720px; height: 720px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,154,53,.13) 0%, rgba(201,154,53,.04) 35%, transparent 65%);
+      transform: translate3d(calc(var(--lx) - 360px), calc(var(--ly) - 360px), 0); will-change: transform; }
+    body > header, body > main, body > footer { position: relative; z-index: 1; }
+
+    @media (pointer: coarse) { #fxGlow, #fxGridLit { display: none; } }
+    /* Header: frosted navy with the NCC tricolour as its bottom rule. */
+    body > header { background: rgba(12,22,38,.78) !important; box-shadow: none !important; border-bottom: 0 !important; }
+    body > header::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+      background: linear-gradient(90deg, var(--red) 0 33.33%, #2E4A7A 33.33% 66.66%, var(--sky) 66.66% 100%); opacity: .9; }
+
+    /* Controls */
+    button, select, input, textarea { font-family: inherit; }
+    button { transition: background-color .18s var(--snap), border-color .18s var(--snap), color .18s var(--snap), box-shadow .18s var(--snap), scale .45s var(--spring), translate .35s var(--spring); }
+    button:active:not(:disabled) { scale: .95; transition-duration: .06s; }
+    select, input[type="text"], input[type="search"], input[type="email"], input[type="password"], input[type="datetime-local"], textarea { transition: border-color .15s, box-shadow .15s, background-color .15s; }
+    select:focus, input:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(108,180,228,.18); }
+    .fx-ripple { position: absolute; border-radius: 50%; pointer-events: none; width: 12px; height: 12px; margin: -6px 0 0 -6px;
+      background: currentColor; opacity: .28; transform: scale(0); animation: fxRipple .55s var(--snap) forwards; }
+    @keyframes fxRipple { to { transform: scale(var(--rip, 30)); opacity: 0; } }
+
+    /* Surfaces: a soft light follows the pointer across panels and cards. */
+    [class*="bg-slate-900"][class*="border"], .module-card, .tool-row {
+      background-image: radial-gradient(420px circle at var(--px, -999px) var(--py, -999px), rgba(201,154,53,.075), transparent 55%); }
+    [class*="bg-slate-900"][class*="border"]:hover, .module-card:hover { border-color: #34496B; }
+
+    /* Task Master tiles */
+    .module-card { position: relative; border: 1px solid var(--line); background-color: var(--surface); border-radius: 14px;
+      transition: border-color .25s var(--snap), background-color .25s var(--snap), transform .5s var(--spring), box-shadow .3s var(--snap);
+      transform-style: preserve-3d; will-change: transform; }
+    .module-card:hover { border-color: rgba(201,154,53,.55); background-color: #16253D; box-shadow: 0 18px 40px -24px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.04); }
+    .module-card strong { font-weight: 600; letter-spacing: -0.015em; }
+
+    /* Page tabs: quiet text with a brass underline for the current page. */
+    .cf-page-tab { position: relative; background: transparent !important; border-color: transparent !important; color: var(--muted) !important; }
+    .cf-page-tab::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px; border-radius: 2px; background: var(--brass);
+      transform: scaleX(0); transform-origin: left; transition: transform .35s var(--spring); }
+    .cf-page-tab:hover { color: var(--ink) !important; }
+    .cf-page-tab[aria-selected="true"] { color: var(--ink) !important; }
+    .cf-page-tab[aria-selected="true"]::after { transform: scaleX(1); }
+
+    /* Filter chips */
+    .af-chip { padding: .3rem .7rem; border: 1px solid var(--line); background: var(--raised); color: #BCC8D8; font-weight: 500; border-radius: 999px !important; }
+    .af-chip:hover { background: #22365A; color: var(--ink); }
+    .af-chip[aria-pressed="true"] { background: var(--brass); border-color: var(--brass); color: var(--navy); font-weight: 600; }
+
+    /* Home: the three tools as large rows */
+    .home { max-width: 64rem; }
+    .home-title { font-size: clamp(2.75rem, 11vw, 6.5rem); line-height: .95; font-weight: 600; letter-spacing: -0.045em;
+      color: var(--ink); white-space: nowrap; }
+    .home-title .ch { display: inline-block; }
+    .home-lede { margin-top: 1.25rem; max-width: 34rem; color: var(--muted); font-size: 1.0625rem; line-height: 1.6; }
+    .ncc-stripe { display: flex; gap: 4px; margin-bottom: 1.5rem; }
+    .ncc-stripe i { display: block; width: 28px; height: 6px; border-radius: 2px; }
+    .ncc-stripe i:nth-child(1) { background: var(--red); } .ncc-stripe i:nth-child(2) { background: #2E4A7A; } .ncc-stripe i:nth-child(3) { background: var(--sky); }
+    .tool-list { margin-top: 3rem; border-top: 1px solid var(--line); }
+    .tool-row { position: relative; display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'name stat' 'desc stat'; align-items: center; gap: .35rem 1.5rem;
+      width: 100%; text-align: left; padding: 1.6rem 1rem 1.6rem .25rem; border-bottom: 1px solid var(--line); border-radius: 0 !important;
+      background-color: transparent; transition: background-color .3s var(--snap), padding .45s var(--spring); }
+    .tool-row:hover, .tool-row:focus-visible { background-color: rgba(19,32,54,.65); padding-left: 1.25rem; }
+    .tool-row:active { scale: .985 !important; }
+    .tool-name { grid-area: name; font-size: clamp(1.6rem, 3.6vw, 2.4rem); line-height: 1.05; font-weight: 500; color: var(--ink);
+      letter-spacing: -0.03em; transition: color .25s var(--snap); }
+    .tool-row:hover .tool-name { color: var(--brass-hi); }
+    .tool-desc { grid-area: desc; color: var(--muted); font-size: .95rem; max-width: 36rem; line-height: 1.5; }
+    .tool-stat { grid-area: stat; text-align: right; font-variant-numeric: tabular-nums; }
+    .tool-stat b { display: block; font-size: clamp(1.6rem, 3.4vw, 2.2rem); font-weight: 500; color: var(--ink); line-height: 1; letter-spacing: -0.02em; }
+    .tool-stat small { display: block; margin-top: .35rem; font-size: .8rem; color: var(--muted); white-space: nowrap; }
+    .home-foot { margin-top: 1.25rem; display: flex; justify-content: space-between; gap: 1rem; font-size: .8rem; color: #6B7F9C; }
+    @media (max-width: 640px) {
+      .tool-row { grid-template-columns: 1fr; grid-template-areas: 'name' 'desc' 'stat'; padding: 1.25rem .25rem; }
+      .tool-stat { text-align: left; display: flex; align-items: baseline; gap: .5rem; } .tool-stat small { margin: 0; }
+    }
+
+    /* One orchestrated entrance on load, then a short enter for page switches and dialogs. */
+    @keyframes fxRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @keyframes fxChar { from { opacity: 0; transform: translateY(.45em) rotate(4deg); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+    @keyframes fxFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fxPop  { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+    .home-title .ch { animation: fxChar .7s var(--snap) both; animation-delay: calc(var(--i) * 45ms + 80ms); }
+    .home-lede { animation: fxRise .7s var(--snap) both .35s; }
+    .tool-row { animation: fxRise .6s var(--snap) both; animation-delay: calc(var(--i, 0) * 70ms + 450ms); }
+    .fx-enter { animation: fxRise .38s var(--snap) both; }
+    .fixed.inset-0:not(.hidden) { animation: fxFade .18s ease-out both; }
+    .fixed.inset-0:not(.hidden) > div { animation: fxPop .34s var(--spring) both; }
+    #toast { transition: transform .45s var(--spring), opacity .2s ease !important; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0ms !important; transition-duration: .001ms !important; }
+      #fxGlow, #fxGridLit { display: none !important; }
+    }
+
+    .badge-check { transition: background-color .18s var(--snap), border-color .18s var(--snap), scale .45s var(--spring); }
+    #modalRosterTableBody tr { transition: background-color .4s ease; }
+    #modalRosterTableBody tr.roster-saved { background-color: rgba(53,153,110,.2) !important; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2A3D5C; border-radius: 9999px; border: 2px solid var(--navy); }
+    ::-webkit-scrollbar-thumb:hover { background: #3E5476; }
+
     /* Custom Checkbox Style for Dark Mode */
     input[type="checkbox"].cadet-cb {
       appearance: none;
-      background-color: #1e293b;
+      background-color: #1B2B45;
       margin: 0;
       font: inherit;
       color: currentColor;
       width: 1.15em;
       height: 1.15em;
-      border: 1px solid #475569;
+      border: 1px solid #3E5476;
       border-radius: 0.25em;
       display: grid;
       place-content: center;
@@ -52,14 +193,14 @@
       width: 0.65em;
       height: 0.65em;
       transform: scale(0);
-      transition: 120ms transform ease-in-out;
-      box-shadow: inset 1em 1em #f59e0b;
-      background-color: #f59e0b;
+      transition: .35s transform cubic-bezier(.34,1.56,.64,1);
+      box-shadow: inset 1em 1em #C99A35;
+      background-color: #C99A35;
       transform-origin: center;
       clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
     }
     input[type="checkbox"].cadet-cb:checked::before { transform: scale(1); }
-    input[type="checkbox"].cadet-cb:checked { border-color: #f59e0b; }
+    input[type="checkbox"].cadet-cb:checked { border-color: #C99A35; }
     /* Visitors can view and filter, but edit controls are hidden until an approved editor signs in. */
     body:not(.can-edit) button[onclick*="openNewEventModal"],
     body:not(.can-edit) button[onclick*="openEditCurrentEventModal"],
@@ -71,7 +212,8 @@
     body:not(.can-edit) button[onclick*="promptReason"],
     body:not(.can-edit) button[onclick*="toggleCadetStatus"],
     body:not(.can-edit) button[onclick*="applyBatchPaste"],
-    body:not(.can-edit) button[onclick*="addNewCadetRow"],
+    body:not(.can-edit) button[onclick*="addCadetFromForm"],
+    body:not(.can-edit) button[onclick*="rosterEdit"],
     body:not(.can-edit) button[onclick*="removeCadet"],
     /* Backup restore changes shared data, so it is available to approved editors only. */
     body:not(.can-edit) button[title="Restore from a backup"],
@@ -81,7 +223,6 @@
     body:not(.can-edit) button[onclick*="setTeamDone"],
     body:not(.can-edit) button[onclick*="recordCallOut"],
     body:not(.can-edit) button[onclick*="deleteCallOut"],
-    body:not(.can-edit) button[onclick*="toggleCycle"],
     body:not(.can-edit) #restoreFileInput { display: none !important; }
     /* Read-only status badges shown to visitors in place of editor toggles. */
     body.can-edit .viewer-only { display: none !important; }
@@ -145,35 +286,35 @@
 
   <!-- Main Container -->
   <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-4">
-    <section id="homePage" class="space-y-8 py-5 sm:py-10" aria-labelledby="homeHeading">
-      <div class="border-l-4 border-amber-500 pl-5 sm:pl-7 py-2">
-        <p class="text-xs font-bold uppercase tracking-[.2em] text-amber-400">National Cadet Corps · Digital tools</p>
-        <h2 id="homeHeading" class="mt-3 text-3xl sm:text-5xl font-black tracking-tight text-white">CadetFlow</h2>
-        <p class="mt-3 max-w-2xl text-sm sm:text-base leading-7 text-slate-400">Choose a workspace to get started. More NCC tools can be added here as the platform grows.</p>
-      </div>
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <button type="button" class="module-card text-left p-5 sm:p-7 min-h-56 flex flex-col items-start justify-between" onclick="switchCadetFlowPage('availability')" aria-label="Open Cadet Availability">
-          <div class="flex items-start justify-between w-full gap-4"><span class="text-xs uppercase tracking-widest font-bold text-slate-500">01 / Scheduling</span><span class="text-2xl text-amber-400" aria-hidden="true">↗</span></div>
-          <div class="mt-8"><h3 class="text-xl sm:text-2xl font-extrabold text-white">Cadet Availability</h3><p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">Find cadets who are free on a selected day and half, using the current roster.</p></div>
+    <section id="homePage" class="home py-6 sm:py-14" aria-labelledby="homeHeading">
+      <h2 id="homeHeading" class="home-title" data-split>CadetFlow</h2>
+      <p class="home-lede">Tasks, availability and the roster for Jessami, Kohima and Naushera companies, kept in one place and shared with every senior.</p>
+      <nav class="tool-list" aria-label="Tools">
+        <button type="button" class="tool-row" style="--i:0" onclick="switchCadetFlowPage('availability')" aria-label="Open Cadet Availability">
+          <span class="tool-name">Availability</span>
+          <span class="tool-desc">Who is free in a given half, who has a cycle, and who has already been called for work.</span>
+          <span class="tool-stat" id="homeStatAvail"><b>–</b><small>free right now</small></span>
         </button>
-        <button type="button" class="module-card text-left p-5 sm:p-7 min-h-56 flex flex-col items-start justify-between" onclick="switchCadetFlowPage('roster')" aria-label="Open Task Master">
-          <div class="flex items-start justify-between w-full gap-4"><span class="text-xs uppercase tracking-widest font-bold text-slate-500">02 / Operations</span><span class="text-2xl text-amber-400" aria-hidden="true">↗</span></div>
-          <div class="mt-8"><h3 class="text-xl sm:text-2xl font-extrabold text-white">Task Master</h3><p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">Manage tasks, track attendance and dues, and maintain the cadet roster.</p></div>
+        <button type="button" class="tool-row" style="--i:1" onclick="switchCadetFlowPage('roster')" aria-label="Open Task Master">
+          <span class="tool-name">Task Master</span>
+          <span class="tool-desc">Dues, submissions, attendance and special events with custom teams.</span>
+          <span class="tool-stat" id="homeStatTasks"><b>–</b><small>ongoing tasks</small></span>
         </button>
-        <button type="button" class="module-card text-left p-5 sm:p-7 min-h-56 flex flex-col items-start justify-between" onclick="switchCadetFlowPage('directory')" aria-label="Open Cadet Roster">
-          <div class="flex items-start justify-between w-full gap-4"><span class="text-xs uppercase tracking-widest font-bold text-slate-500">03 / Directory</span><span class="text-2xl text-amber-400" aria-hidden="true">↗</span></div>
-          <div class="mt-8"><h3 class="text-xl sm:text-2xl font-extrabold text-white">Cadet Roster</h3><p class="mt-2 max-w-sm text-sm leading-6 text-slate-400">See who is in each company and year. Open to everyone, no sign-in needed.</p></div>
+        <button type="button" class="tool-row" style="--i:2" onclick="switchCadetFlowPage('directory')" aria-label="Open Cadet Roster">
+          <span class="tool-name">Roster</span>
+          <span class="tool-desc">Every cadet by company, year and wing. Open to anyone, no sign-in needed.</span>
+          <span class="tool-stat" id="homeStatRoster"><b>–</b><small>cadets</small></span>
         </button>
-      </div>
-      <div class="border-t border-slate-800 pt-4 flex items-center justify-between gap-3 text-xs text-slate-500"><span>CadetFlow · NCC administration</span><span id="homeCadetCount">37 active cadets</span></div>
+      </nav>
+      <div class="home-foot"><span>National Cadet Corps</span><span id="homeCadetCount">37 active cadets</span></div>
     </section>
-    <nav id="moduleNav" class="hidden flex-wrap items-center gap-2 border-b border-slate-800 pb-3" aria-label="CadetFlow pages">
-      <button type="button" class="border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-bold text-slate-300 hover:text-white" onclick="switchCadetFlowPage('home')">← All tools</button>
+    <nav id="moduleNav" class="hidden flex-wrap items-center gap-1 border-b border-slate-800 pb-2" aria-label="CadetFlow pages">
+      <button type="button" class="px-3 py-2 text-sm font-semibold text-slate-400 hover:text-white rounded-lg hover:bg-slate-900" onclick="switchCadetFlowPage('home')">← All tools</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="rosterTab" aria-selected="true" onclick="switchCadetFlowPage('roster')">Task Master</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="availabilityTab" aria-selected="false" onclick="switchCadetFlowPage('availability')">Cadet Availability</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="directoryTab" aria-selected="false" onclick="switchCadetFlowPage('directory')">Cadet Roster</button>
       <div id="memoryMenu" class="relative ml-auto">
-        <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="memoryTab" aria-haspopup="true" aria-expanded="false" onclick="toggleMemoryMenu()">Memory ▾</button>
+        <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="memoryTab" aria-haspopup="true" aria-expanded="false" onclick="toggleMemoryMenu()">Data ▾</button>
         <div id="memoryDropdown" class="hidden absolute right-0 top-full mt-1 min-w-44 border border-slate-700 bg-slate-900 shadow-xl z-40">
           <button type="button" class="block w-full text-left px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800" onclick="exportCadetFlowData()">Export data</button>
           <button type="button" class="block w-full text-left px-4 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800" onclick="document.getElementById('restoreFileInput').click(); closeMemoryMenu()">Import data</button>
@@ -185,11 +326,11 @@
       <section id="taskMasterHome" class="space-y-5">
         <div class="border-l-4 border-amber-500 pl-4 py-1"><p class="text-xs uppercase tracking-widest font-bold text-amber-400">Task Master</p><h2 class="text-2xl font-black text-white mt-2">What do you want to do?</h2><p class="text-sm text-slate-400 mt-2">Create a task, review the archive, or return to ongoing work.</p></div>
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <button type="button" onclick="app.openNewEventModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-amber-400 font-bold">01 / Create</span><span><strong class="block text-xl text-white">New task</strong><span class="block text-sm text-slate-400 mt-2">Set up a new task and submission deadline.</span></span></button>
-          <button type="button" onclick="showTaskMasterSection('archive')" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-slate-400 font-bold">02 / Records</span><span><strong class="block text-xl text-white">View tasks</strong><span class="block text-sm text-slate-400 mt-2">Browse archived tasks and submission outcomes.</span></span></button>
-          <button id="ongoingTasksCard" type="button" onclick="showTaskMasterSection('ongoing')" class="module-card hidden text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-emerald-400 font-bold">03 / In progress</span><span><strong class="block text-xl text-white">Ongoing tasks</strong><span id="ongoingTasksCount" class="block text-sm text-slate-400 mt-2">Review active tasks.</span></span></button>
-          <button type="button" onclick="app.openSpecialEventModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-violet-400 font-bold">04 / Special event</span><span><strong class="block text-xl text-white">Special event</strong><span class="block text-sm text-slate-400 mt-2">Pick any cadets, group them into custom teams and give each team its own task.</span></span></button>
-          <button type="button" onclick="app.openRosterModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span class="text-xs uppercase tracking-widest text-slate-400 font-bold">05 / Roster</span><span><strong class="block text-xl text-white">Manage roster</strong><span class="block text-sm text-slate-400 mt-2">Add, rename or move cadets between companies.</span></span></button>
+          <button type="button" onclick="app.openNewEventModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span><strong class="block text-xl text-white">New task</strong><span class="block text-sm text-slate-400 mt-2">Set up a new task and submission deadline.</span></span></button>
+          <button type="button" onclick="showTaskMasterSection('archive')" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span><strong class="block text-xl text-white">View tasks</strong><span class="block text-sm text-slate-400 mt-2">Browse archived tasks and submission outcomes.</span></span></button>
+          <button id="ongoingTasksCard" type="button" onclick="showTaskMasterSection('ongoing')" class="module-card hidden text-left p-5 min-h-40 flex flex-col justify-between"><span><strong class="block text-xl text-white">Ongoing tasks</strong><span id="ongoingTasksCount" class="block text-sm text-slate-400 mt-2">Review active tasks.</span></span></button>
+          <button type="button" onclick="app.openSpecialEventModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span><strong class="block text-xl text-white">Special event</strong><span class="block text-sm text-slate-400 mt-2">Pick any cadets, group them into custom teams and give each team its own task.</span></span></button>
+          <button type="button" onclick="app.openRosterModal()" class="module-card text-left p-5 min-h-40 flex flex-col justify-between"><span><strong class="block text-xl text-white">Manage roster</strong><span class="block text-sm text-slate-400 mt-2">Add, rename or move cadets between companies.</span></span></button>
         </div>
       </section>
       <section id="taskArchivePage" class="hidden space-y-4">
@@ -503,12 +644,7 @@
           <button onclick="app.setRankFilter('all')" id="rankBtn-all" class="px-2.5 py-1 rounded-lg font-bold bg-amber-500 text-slate-900 transition-all">
             All Ranks
           </button>
-          <button onclick="app.setRankFilter('LCPL')" id="rankBtn-LCPL" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all flex items-center gap-1">
-            <span class="text-amber-500 font-bold">▲</span> LCPL (<span id="rankCountLCPL" class="font-mono-num font-bold">4</span>)
-          </button>
-          <button onclick="app.setRankFilter('CDT')" id="rankBtn-CDT" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> CDT (<span id="rankCountCDT" class="font-mono-num font-bold">33</span>)
-          </button>
+          <span id="rankFilterButtons" class="contents"></span>
         </div>
 
         <!-- Bulk Mark on Visible Cadets -->
@@ -619,7 +755,7 @@
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Company</span><button type="button" data-af="company" data-val="all" onclick="setAvailFilter('company', 'all')" class="af-chip">All</button><button type="button" data-af="company" data-val="Jessami" onclick="setAvailFilter('company', 'Jessami')" class="af-chip">Jessami</button><button type="button" data-af="company" data-val="Kohima" onclick="setAvailFilter('company', 'Kohima')" class="af-chip">Kohima</button><button type="button" data-af="company" data-val="Naushera" onclick="setAvailFilter('company', 'Naushera')" class="af-chip">Naushera</button></div>
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Year</span><button type="button" data-af="year" data-val="all" onclick="setAvailFilter('year', 'all')" class="af-chip">All</button><button type="button" data-af="year" data-val="1st" onclick="setAvailFilter('year', '1st')" class="af-chip">1st</button><button type="button" data-af="year" data-val="2nd" onclick="setAvailFilter('year', '2nd')" class="af-chip">2nd</button><button type="button" data-af="year" data-val="3rd" onclick="setAvailFilter('year', '3rd')" class="af-chip">3rd</button><button type="button" data-af="year" data-val="none" onclick="setAvailFilter('year', 'none')" class="af-chip">Not set</button></div>
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Wing</span><button type="button" data-af="wing" data-val="all" onclick="setAvailFilter('wing', 'all')" class="af-chip">All</button><button type="button" data-af="wing" data-val="SD" onclick="setAvailFilter('wing', 'SD')" class="af-chip">SD</button><button type="button" data-af="wing" data-val="SW" onclick="setAvailFilter('wing', 'SW')" class="af-chip">SW</button></div>
-          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Cycle</span><button type="button" data-af="cycle" data-val="all" onclick="setAvailFilter('cycle', 'all')" class="af-chip">All</button><button type="button" data-af="cycle" data-val="yes" onclick="setAvailFilter('cycle', 'yes')" class="af-chip">🚲 Has cycle</button><button type="button" data-af="cycle" data-val="no" onclick="setAvailFilter('cycle', 'no')" class="af-chip">No cycle</button><button type="button" data-af="cycle" data-val="unknown" onclick="setAvailFilter('cycle', 'unknown')" class="af-chip">Not recorded</button></div>
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Cycle</span><button type="button" data-af="cycle" data-val="all" onclick="setAvailFilter('cycle', 'all')" class="af-chip">All</button><button type="button" data-af="cycle" data-val="yes" onclick="setAvailFilter('cycle', 'yes')" class="af-chip">Has cycle</button><button type="button" data-af="cycle" data-val="no" onclick="setAvailFilter('cycle', 'no')" class="af-chip">No cycle</button></div>
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Sort</span><button type="button" data-af="sort" data-val="fewest" onclick="setAvailFilter('sort', 'fewest')" class="af-chip">Fewest calls first</button><button type="button" data-af="sort" data-val="name" onclick="setAvailFilter('sort', 'name')" class="af-chip">Name</button><button type="button" data-af="sort" data-val="company" onclick="setAvailFilter('sort', 'company')" class="af-chip">Company</button></div>
         </div>
         <div id="availabilityResults" class="mt-5" aria-live="polite"></div>
@@ -654,62 +790,92 @@
   <!-- ==================== MODALS ==================== -->
 
   <!-- Modal: Master Cadet Roster Management -->
-  <div id="rosterModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
-      <div class="flex items-start justify-between">
+  <div id="rosterModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-5xl w-full p-4 sm:p-5 shadow-2xl space-y-3 h-[94vh] flex flex-col">
+      <div class="flex items-start justify-between gap-3">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-base sm:text-lg font-extrabold text-white">Battalion Master Roster</h3>
+            <h3 class="text-base sm:text-lg font-extrabold text-white">Edit roster</h3>
             <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 border border-slate-700 text-slate-300 font-mono-num" id="modalRosterCountBadge">37 Cadets</span>
           </div>
-          <p class="text-xs text-slate-400 mt-0.5">Manage Rank, Name, Wing (SD/SW), and Company. Existing records for past events remain preserved.</p>
+          <p class="text-xs text-slate-400 mt-0.5">Every change saves straight away. Search or filter to find someone, tick cadets to change several at once.</p>
         </div>
-        <button onclick="app.closeModal('rosterModal')" class="text-slate-500 hover:text-slate-300 p-1">
+        <button type="button" onclick="app.closeModal('rosterModal')" class="text-slate-500 hover:text-slate-300 p-1" aria-label="Close">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <!-- Quick Summary of current roster across wings, ranks and coys -->
-      <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center text-xs">
-        <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-          <span class="text-[10px] text-slate-500 font-bold uppercase block">LCPL</span>
-          <span id="badgeCountLCPL" class="font-black text-amber-500 font-mono-num">0</span>
+      <!-- Search + filters -->
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative flex-1 min-w-[180px]">
+          <svg class="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="search" id="rosterSearch" oninput="app.setRosterFilter('q', this.value)" placeholder="Search name…" autocomplete="off" class="w-full pl-8 pr-2 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500">
         </div>
-        <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-          <span class="text-[10px] text-slate-500 font-bold uppercase block">CDT</span>
-          <span id="badgeCountCDT" class="font-black text-slate-300 font-mono-num">0</span>
-        </div>
-        <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-          <span class="text-[10px] text-slate-500 font-bold uppercase block">Jessami</span>
-          <span id="badgeCountJessami" class="font-black text-amber-600 font-mono-num">0</span>
-        </div>
-        <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-          <span class="text-[10px] text-slate-500 font-bold uppercase block">Kohima</span>
-          <span id="badgeCountKohima" class="font-black text-indigo-500 font-mono-num">0</span>
-        </div>
-        <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-          <span class="text-[10px] text-slate-500 font-bold uppercase block">Naushera</span>
-          <span id="badgeCountNaushera" class="font-black text-emerald-500 font-mono-num">0</span>
-        </div>
+        <select id="rosterFilterCompany" onchange="app.setRosterFilter('company', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Company"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+        <select id="rosterFilterYear" onchange="app.setRosterFilter('year', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Year"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
+        <select id="rosterFilterWing" onchange="app.setRosterFilter('wing', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Wing"><option value="all">SD &amp; SW</option><option value="SD">SD</option><option value="SW">SW</option></select>
+        <select id="rosterFilterCycle" onchange="app.setRosterFilter('cycle', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Cycle"><option value="all">Cycle: any</option><option value="yes">Has cycle</option><option value="no">No cycle</option></select>
+        <select id="rosterFilterRank" onchange="app.setRosterFilter('rank', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Rank"><option value="all">All ranks</option></select>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+        <span id="rosterShowing" class="text-slate-400"></span>
+        <span id="rosterSummary" class="text-slate-500"></span>
       </div>
 
-      <!-- Year: summary, filter and quick set -->
-      <div class="flex flex-wrap items-center gap-2 text-xs bg-slate-800/40 border border-slate-700/50 rounded-xl p-2">
-        <span class="font-bold text-slate-300">Year</span>
-        <span id="rosterYearCounts" class="text-slate-400"></span>
-        <label class="ml-auto text-slate-400">Show
-          <select id="rosterYearFilter" onchange="app.renderModalRosterTable()" class="ml-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs">
-            <option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option>
-          </select>
-        </label>
-        <span class="text-slate-400">Set shown to
-          <select id="rosterYearBulk" class="ml-1 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs"><option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option></select>
-        </span>
-        <button type="button" onclick="app.setYearForShown()" class="px-2.5 py-1 font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 rounded-lg">Apply</button>
+      <!-- Bulk actions for ticked cadets -->
+      <div id="rosterBulkBar" class="hidden flex flex-wrap items-center gap-2 text-xs bg-amber-950/30 border border-amber-700/40 rounded-xl p-2">
+        <span class="font-bold text-amber-300"><span id="rosterTickCount">0</span> ticked</span>
+        <span class="text-slate-400">Set</span>
+        <select id="rosterBulkField" onchange="app.updateRosterBulkValues()" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Field to change">
+          <option value="year">Year</option><option value="cycle">Cycle</option><option value="company">Company</option><option value="wing">Wing</option><option value="rank">Rank</option>
+        </select>
+        <span class="text-slate-400">to</span>
+        <select id="rosterBulkValue" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="New value"></select>
+        <button type="button" onclick="app.applyRosterBulk()" class="px-3 py-1.5 font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg">Apply</button>
+        <button type="button" onclick="app.clearRosterTicks()" class="px-2.5 py-1.5 font-semibold text-slate-300 hover:bg-slate-800 rounded-lg">Clear ticks</button>
+        <button type="button" onclick="app.removeTickedCadets()" class="ml-auto px-2.5 py-1.5 font-bold text-rose-300 border border-rose-800/60 hover:bg-rose-950/40 rounded-lg">Remove ticked</button>
       </div>
 
+      <!-- Editable Roster Table -->
+      <div class="flex-1 min-h-0 overflow-y-auto border border-slate-700 rounded-xl bg-slate-950" id="rosterTableWrap">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-800 text-slate-400 sticky top-0 z-10 font-bold border-b border-slate-700">
+            <tr>
+              <th class="p-2 w-8 text-center"><input type="checkbox" id="rosterTickAll" class="cadet-cb" onchange="app.tickAllShownRoster(this.checked)" aria-label="Tick all shown"></th>
+              <th class="p-2 w-20">Rank</th>
+              <th class="p-2 min-w-[160px]">Cadet name</th>
+              <th class="p-2 w-[72px]">Wing</th>
+              <th class="p-2 w-[88px]">Year</th>
+              <th class="p-2 w-28">Company</th>
+              <th class="p-2 w-24">Cycle</th>
+              <th class="p-2 w-10 text-center"><span class="sr-only">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody id="modalRosterTableBody" class="divide-y divide-slate-800"></tbody>
+        </table>
+        <p id="rosterNoMatch" class="hidden p-6 text-center text-xs text-slate-500">No cadets match. <button type="button" onclick="app.resetRosterFilters()" class="underline text-slate-300">Clear search &amp; filters</button></p>
+      </div>
+
+      <!-- Add one cadet -->
+      <details id="addCadetSection" class="border border-slate-700 rounded-xl bg-slate-950/50 group">
+        <summary class="cursor-pointer select-none px-3 py-2 text-xs font-bold text-emerald-300">+ Add a cadet</summary>
+        <form id="addCadetForm" onsubmit="event.preventDefault(); app.addCadetFromForm()" class="flex flex-wrap items-end gap-2 px-3 pb-3 text-xs">
+          <label class="text-slate-400">Rank<select id="addCadetRank" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>CDT</option><option>LCPL</option><option>CPL</option><option>SGT</option><option>JUO</option><option>SUO</option></select></label>
+          <label class="text-slate-400 flex-1 min-w-[160px]">Name<input id="addCadetName" type="text" required autocomplete="off" placeholder="Full name" class="block w-full mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"></label>
+          <label class="text-slate-400">Wing<select id="addCadetWing" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>SD</option><option>SW</option></select></label>
+          <label class="text-slate-400">Year<select id="addCadetYear" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option value="">Not set</option><option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option></select></label>
+          <label class="text-slate-400">Company<select id="addCadetCompany" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>Jessami</option><option>Kohima</option><option>Naushera</option></select></label>
+          <label class="text-slate-400">Cycle<select id="addCadetCycle" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option value="no">No cycle</option><option value="yes">Has cycle</option></select></label>
+          <button type="submit" class="px-3 py-1.5 font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add cadet</button>
+        </form>
+      </details>
+
+      <!-- Add / update many from a pasted list -->
+      <details class="border border-slate-700 rounded-xl bg-slate-950/50">
+        <summary class="cursor-pointer select-none px-3 py-2 text-xs font-bold text-amber-400">Add / update many from a pasted list</summary>
+        <div class="px-3 pb-3">
       <!-- Batch Quick Paste / Import Panel -->
-      <div class="bg-amber-900/20 border border-amber-700/30 rounded-xl p-3 space-y-2">
+      <div class="bg-amber-900/20 border border-amber-700/30 rounded-xl p-3 space-y-2 mt-2">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-amber-500 flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -730,38 +896,12 @@
         </div>
       </div>
 
-      <!-- Editable Roster Table -->
-      <div class="flex-1 overflow-y-auto border border-slate-700 rounded-xl bg-slate-950">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-slate-800 text-slate-400 sticky top-0 font-bold border-b border-slate-700">
-            <tr>
-              <th class="p-2.5 w-10 text-center">#</th>
-              <th class="p-2.5 w-24">Rank</th>
-              <th class="p-2.5">Cadet Name</th>
-              <th class="p-2.5 w-24">Wing</th>
-              <th class="p-2.5 w-24">Year</th>
-              <th class="p-2.5 w-24">Cycle</th>
-              <th class="p-2.5 w-32">Company</th>
-              <th class="p-2.5 w-12 text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody id="modalRosterTableBody" class="divide-y divide-slate-800">
-            <!-- Dynamic editable rows -->
-          </tbody>
-        </table>
-      </div>
+        </div>
+      </details>
 
-      <!-- Modal Footer -->
-      <div class="flex items-center justify-between pt-2 border-t border-slate-800">
-        <button onclick="app.addNewCadetRow()" class="px-3 py-1.5 text-xs font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors flex items-center gap-1" title="Add 38th cadet if needed">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Add 38th Cadet
-        </button>
-        <button onclick="app.closeModal('rosterModal')" class="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl transition-colors">
-          Save & Close
-        </button>
+      <div class="flex items-center justify-end pt-1">
+        <button type="button" onclick="app.closeModal('rosterModal')" class="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl">Done</button>
       </div>
-
     </div>
   </div>
 
@@ -1159,7 +1299,7 @@
           const raw = localStorage.getItem(this.storageKey);
           if (raw) {
             const data = JSON.parse(raw);
-            this.state.cadets = (data.cadets && data.cadets.length > 0) ? data.cadets : [...USER_EXACT_37_CADETS];
+            this.state.cadets = (data.cadets && data.cadets.length > 0) ? normalizeCadets(data.cadets) : [...USER_EXACT_37_CADETS];
             this.state.events = (data.events && data.events.length > 0) ? data.events : [...DEFAULT_EVENTS];
             this.state.activeEventId = data.activeEventId || this.state.events[0].id;
             this.state.history = Array.isArray(data.history) ? data.history : [];
@@ -1341,11 +1481,13 @@
       }
 
       applyState(data) {
-        this.state.cadets = Array.isArray(data.cadets) ? data.cadets : [];
-        this.state.events = Array.isArray(data.events) ? data.events : [];
+        this.state.cadets = normalizeCadets(data.cadets);
+        this.state.events = Array.isArray(data.events) ? data.events.filter(e => e && e.id) : [];
         this.state.activeEventId = this.state.events.some(e => e.id === data.activeEventId) ? data.activeEventId : (this.state.events[0]?.id || null);
         this.state.history = Array.isArray(data.history) ? data.history : [];
-        this.state.duties = Array.isArray(data.duties) ? data.duties : [];
+        // Older call-outs stored the editor's email; keep only the name part (the shared data is public).
+        this.state.duties = (Array.isArray(data.duties) ? data.duties : []).filter(d => d && d.id)
+          .map(d => (d.by && String(d.by).includes('@')) ? { ...d, by: String(d.by).split('@')[0] } : d);
         this.state.events.forEach(ev => normalizeEvent(ev));
         // Drop ticked checkboxes for cadets that no longer exist.
         const ids = new Set(this.state.cadets.map(c => c.id));
@@ -1451,7 +1593,8 @@
       /** If another editor deleted the task on screen (or open in an editor), say so instead of silently showing another one. */
       handleRemovedEvents(shownId) {
         const exists = id => this.state.events.some(e => e.id === id);
-        if (shownId && !exists(shownId) && !document.getElementById('taskWorkspace')?.classList.contains('hidden')) {
+        const ws = document.getElementById('taskWorkspace');
+        if (shownId && !exists(shownId) && ws && ws.offsetParent !== null) {
           showTaskMasterSection('home');
           this.showToast('The task you were viewing was deleted by another editor.');
         }
@@ -1615,7 +1758,7 @@
         this.state.events.forEach(ev => {
           const opt = document.createElement('option');
           opt.value = ev.id;
-          let label = ev.archived ? `📦 [ARCHIVED] ${ev.title}` : ev.title;
+          let label = ev.archived ? `${ev.title} (archived)` : ev.title;
           if (ev.type === 'special') label += ' (Special event)';
           else if ((ev.scope && ev.scope !== 'All') || eventYears(ev).length) label += ` (${scopeText(ev.scope, eventYears(ev))})`;
           opt.textContent = label;
@@ -1716,6 +1859,7 @@
         const homeCount = document.getElementById('homeCadetCount');
         if (homeCount) homeCount.textContent = `${cadets.length} active cadets`;
         if (typeof renderRosterDirectory === 'function') renderRosterDirectory();
+        if (typeof renderHomeStats === 'function') renderHomeStats();
         if (typeof renderAvailabilityResults === 'function' && !document.getElementById('availabilityPage')?.classList.contains('hidden')) renderAvailabilityResults();
 
         const isSpecial = ev?.type === 'special';
@@ -1738,7 +1882,8 @@
           Kohima: { total: 0, done: 0, excused: 0 },
           Naushera: { total: 0, done: 0, excused: 0 }
         };
-        let total = 0, totalDone = 0, totalExcused = 0, lcplCount = 0, cdtCount = 0;
+        let total = 0, totalDone = 0, totalExcused = 0;
+        const rankCounts = {};
 
         cadets.forEach(c => {
           if (!cadetInEvent(c, ev)) return; // Skip cadets outside the task's company / years
@@ -1748,8 +1893,8 @@
           total++;
           statsByCoy[coyKey].total++;
           if (status === 'done') { totalDone++; statsByCoy[coyKey].done++; }
-          if (c.rank === 'LCPL') lcplCount++;
-          else if (!c.rank || c.rank === 'CDT') cdtCount++;
+          const rk = c.rank || 'CDT';
+          rankCounts[rk] = (rankCounts[rk] || 0) + 1;
         });
 
         const totalPending = total - totalDone;
@@ -1778,8 +1923,7 @@
         document.getElementById('statusCount-all').textContent = total;
         document.getElementById('statusCount-pending').textContent = totalPending;
         document.getElementById('statusCount-done').textContent = totalDone;
-        document.getElementById('rankCountLCPL').textContent = lcplCount;
-        document.getElementById('rankCountCDT').textContent = cdtCount;
+        this.renderRankFilterButtons(rankCounts);
 
         document.getElementById('dropCountAll').textContent = totalPending;
         document.getElementById('dropCountJessami').textContent = (statsByCoy.Jessami.total - statsByCoy.Jessami.done);
@@ -1846,15 +1990,15 @@
                   <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <span class="px-2 py-0.5 rounded text-[11px] border font-mono font-bold tracking-tight inline-flex items-center gap-1 ${rankConf.badgeClass}" title="${rankConf.fullName}">
                       ${item.rank === 'LCPL' ? '<span class="text-amber-500">▲</span>' : ''}
-                      ${item.rank}
+                      ${this.escape(item.rank || 'CDT')}
                     </span>
                     <span class="font-bold text-sm text-white truncate">${this.escape(item.name)}</span>
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border ${wingBadge}">
-                      ${item.wing}
+                      ${this.escape(item.wing)}
                     </span>
                     ${yearBadgeHtml(item.year)}
                     <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${coyBadge}">
-                      ${item.company}
+                      ${this.escape(item.company)}
                     </span>
                   </div>
                 </div>
@@ -1973,9 +2117,19 @@
         if(render) this.renderAll();
       }
 
+      /** One button per rank that has cadets in this task (all ranks, not just LCPL/CDT). */
+      renderRankFilterButtons(counts) {
+        const host = document.getElementById('rankFilterButtons');
+        if (!host) return;
+        const ranks = RANKS.filter(r => counts[r]).reverse(); // senior first
+        if (this.state.filters.rank !== 'all' && !ranks.includes(this.state.filters.rank) && !this.state.cadets.some(c => (c.rank || 'CDT') === this.state.filters.rank)) this.state.filters.rank = 'all';
+        host.innerHTML = ranks.map(r => `<button onclick="app.setRankFilter('${r}')" id="rankBtn-${r}" class="flex items-center gap-1">${r} (<span class="font-mono-num">${counts[r]}</span>)</button>`).join('');
+        this.setRankFilter(this.state.filters.rank, false);
+      }
+
       setRankFilter(rank, render = true) {
         this.state.filters.rank = rank;
-        ['all', 'LCPL', 'CDT'].forEach(r => {
+        ['all', ...RANKS].forEach(r => {
           const btn = document.getElementById(`rankBtn-${r}`);
           if (btn) {
             if (r === rank) {
@@ -2108,7 +2262,7 @@
           else if (status === 'excused') excused.push(`${c.rank || 'CDT'} ${c.name} – ${rec.note.trim()}`);
         });
         let message = `Pending List:\n`;
-        message += pending.length ? pending.map((line, i) => `${i + 1}. ${line}`).join('\n') + '\n' : 'None 🎉\n';
+        message += pending.length ? pending.map((line, i) => `${i + 1}. ${line}`).join('\n') + '\n' : 'None\n';
         if (excused.length) message += `\nWith reason (not counted):\n` + excused.map((line, i) => `${i + 1}. ${line}`).join('\n') + '\n';
         return { message, pending: pending.length, excused: excused.length };
       }
@@ -2221,145 +2375,255 @@
         this.showToast("CSV record exported successfully!");
       }
 
+      // ==================== ROSTER EDITOR ====================
+      // Edits save immediately and update the row in place, so the table never jumps,
+      // loses scroll position or steals focus while you work down the list.
       openRosterModal() {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit the roster.'); return; }
+        this.resetRosterFilters(false);
+        this.rosterUI.ticked.clear();
         this.renderModalRosterTable();
         document.getElementById('rosterModal').classList.remove('hidden');
+        document.getElementById('rosterTableWrap').scrollTop = 0;
+        setTimeout(() => document.getElementById('rosterSearch')?.focus(), 30);
+      }
+
+      get rosterUI() {
+        if (!this._rosterUI) this._rosterUI = { q: '', company: 'all', year: 'all', wing: 'all', cycle: 'all', rank: 'all', ticked: new Set() };
+        return this._rosterUI;
+      }
+
+      resetRosterFilters(render = true) {
+        Object.assign(this.rosterUI, { q: '', company: 'all', year: 'all', wing: 'all', cycle: 'all', rank: 'all' });
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        set('rosterSearch', ''); ['Company', 'Year', 'Wing', 'Cycle', 'Rank'].forEach(k => set(`rosterFilter${k}`, 'all'));
+        if (render) this.renderModalRosterTable();
+      }
+
+      setRosterFilter(key, value) {
+        this.rosterUI[key] = value;
+        this.renderModalRosterTable();
+      }
+
+      rosterShown() {
+        const f = this.rosterUI;
+        const q = f.q.toLowerCase().replace(/\s+/g, ' ').trim();
+        return this.state.cadets.filter(c =>
+          (!q || c.name.toLowerCase().includes(q)) &&
+          (f.company === 'all' || c.company === f.company) && yearMatches(c, f.year) &&
+          (f.wing === 'all' || c.wing === f.wing) && (f.cycle === 'all' || cycleState(c) === f.cycle) &&
+          (f.rank === 'all' || (c.rank || 'CDT') === f.rank));
       }
 
       renderModalRosterTable() {
         const tbody = document.getElementById('modalRosterTableBody');
-        tbody.innerHTML = '';
+        if (!tbody) return;
         const cadets = this.state.cadets;
+        // Rank filter: only ranks present on the roster.
+        const rankSel = document.getElementById('rosterFilterRank');
+        const ranks = RANKS.filter(r => cadets.some(c => (c.rank || 'CDT') === r));
+        rankSel.innerHTML = '<option value="all">All ranks</option>' + ranks.map(r => `<option value="${r}">${r}</option>`).join('');
+        if (!ranks.includes(this.rosterUI.rank)) this.rosterUI.rank = 'all';
+        rankSel.value = this.rosterUI.rank;
 
-        let lcplCount = 0, cdtCount = 0;
-        let jCount = 0, kCount = 0, nCount = 0;
-
-        const yearFilter = document.getElementById('rosterYearFilter')?.value || 'all';
-        const yearCounts = { '1st': 0, '2nd': 0, '3rd': 0, none: 0 };
-        cadets.forEach(c => { yearCounts[YEARS.includes(c.year) ? c.year : 'none']++; });
-        const yc = document.getElementById('rosterYearCounts');
-        if (yc) yc.textContent = `1st: ${yearCounts['1st']} · 2nd: ${yearCounts['2nd']} · 3rd: ${yearCounts['3rd']} · not set: ${yearCounts.none}`;
-
-        cadets.forEach((c, idx) => {
+        const shown = this.rosterShown();
+        const ids = new Set(cadets.map(c => c.id));
+        [...this.rosterUI.ticked].forEach(id => { if (!ids.has(id)) this.rosterUI.ticked.delete(id); });
+        const sel = 'w-full px-1.5 py-1 bg-slate-900 border border-slate-700 rounded-md text-xs font-bold focus:border-amber-500 focus:outline-none';
+        const opt = (v, cur, label = v) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${label}</option>`;
+        tbody.innerHTML = shown.map(c => {
           const r = c.rank || 'CDT';
-          if (r === 'LCPL') lcplCount++; else cdtCount++;
-          if (c.company === 'Jessami') jCount++;
-          else if (c.company === 'Kohima') kCount++;
-          else nCount++;
-          if (!yearMatches(c, yearFilter)) return;
+          const yes = cycleState(c) === 'yes';
+          return `<tr data-cadet-id="${c.id}" class="${this.rosterUI.ticked.has(c.id) ? 'bg-amber-950/30' : 'hover:bg-slate-800/40'}">
+            <td class="p-1.5 text-center"><input type="checkbox" class="cadet-cb" ${this.rosterUI.ticked.has(c.id) ? 'checked' : ''} onchange="app.tickRosterRow('${c.id}', this.checked)" aria-label="Tick ${this.escape(c.name)}"></td>
+            <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'rank', this.value, this)" class="${sel} text-slate-300" aria-label="Rank">${RANKS.map(rk => opt(rk, r)).join('')}</select></td>
+            <td class="p-1.5"><input type="text" value="${this.escape(c.name)}" onchange="app.rosterEdit('${c.id}', 'name', this.value, this)" onkeydown="if(event.key==='Enter'){this.blur()}" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-md text-xs font-semibold text-white focus:outline-none focus:border-amber-500" aria-label="Name"></td>
+            <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'wing', this.value, this)" class="${sel} ${c.wing === 'SD' ? 'text-sky-400' : 'text-rose-400'}" aria-label="Wing">${opt('SD', c.wing)}${opt('SW', c.wing)}</select></td>
+            <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'year', this.value, this)" class="${sel} ${YEARS.includes(c.year) ? 'text-violet-300' : 'text-amber-400 border-amber-700/60'}" aria-label="Year">${opt('', YEARS.includes(c.year) ? c.year : '', 'Not set')}${YEARS.map(y => opt(y, c.year)).join('')}</select></td>
+            <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'company', this.value, this)" class="${sel} text-slate-300" aria-label="Company">${['Jessami', 'Kohima', 'Naushera'].map(x => opt(x, c.company)).join('')}</select></td>
+            <td class="p-1.5"><button type="button" onclick="app.rosterEdit('${c.id}', 'cycle', '${yes ? 'no' : 'yes'}', this)" aria-pressed="${yes}" title="Click to change" class="w-full px-2 py-1 rounded-md border text-xs font-bold ${yes ? 'bg-teal-900/40 border-teal-700/60 text-teal-300' : 'bg-slate-900 border-slate-700 text-slate-500'}">${yes ? 'Yes' : 'No'}</button></td>
+            <td class="p-1.5 text-center"><button type="button" onclick="app.removeCadet('${c.id}')" class="text-slate-500 hover:text-rose-500 p-1" title="Remove ${this.escape(c.name)}" aria-label="Remove ${this.escape(c.name)}">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button></td>
+          </tr>`;
+        }).join('');
+        document.getElementById('rosterNoMatch').classList.toggle('hidden', shown.length > 0);
+        document.getElementById('rosterShowing').textContent = shown.length === cadets.length ? `Showing all ${cadets.length} cadets` : `Showing ${shown.length} of ${cadets.length} cadets`;
+        this.updateRosterSummary();
+        this.updateRosterBulkBar();
+      }
 
-          const tr = document.createElement('tr');
-          tr.className = "hover:bg-slate-800/50";
-          tr.innerHTML = `
-            <td class="p-2 text-center text-slate-500 font-mono-num font-semibold">#${idx + 1}</td>
-            <td class="p-2">
-              <select onchange="app.updateCadetField('${c.id}', 'rank', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 focus:border-amber-500 focus:outline-none">
-                ${RANKS.map(rk => `<option value="${rk}" ${r === rk ? 'selected' : ''}>${rk}</option>`).join('')}
-              </select>
-            </td>
-            <td class="p-2">
-              <input type="text" value="${this.escape(c.name)}" onchange="app.updateCadetField('${c.id}', 'name', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-amber-500"/>
-            </td>
-            <td class="p-2">
-              <select onchange="app.updateCadetField('${c.id}', 'wing', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold ${c.wing === 'SD' ? 'text-sky-400' : 'text-rose-400'} focus:border-amber-500 focus:outline-none">
-                <option value="SD" ${c.wing === 'SD' ? 'selected' : ''}>SD</option>
-                <option value="SW" ${c.wing === 'SW' ? 'selected' : ''}>SW</option>
-              </select>
-            </td>
-            <td class="p-2">
-              <select onchange="app.updateCadetField('${c.id}', 'year', this.value)" class="w-full px-2 py-1 bg-slate-900 border ${c.year ? 'border-slate-700 text-violet-300' : 'border-amber-700/60 text-amber-400'} rounded-lg text-xs font-bold focus:border-amber-500 focus:outline-none" aria-label="Year">
-                <option value="" ${!YEARS.includes(c.year) ? 'selected' : ''}>Not set</option>
-                ${YEARS.map(y => `<option value="${y}" ${c.year === y ? 'selected' : ''}>${y}</option>`).join('')}
-              </select>
-            </td>
-            <td class="p-2">
-              <select onchange="app.updateCadetField('${c.id}', 'cycle', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold ${cycleState(c) === 'yes' ? 'text-teal-300' : 'text-slate-400'} focus:border-amber-500 focus:outline-none" aria-label="Cycle">
-                <option value="" ${cycleState(c) === 'unknown' ? 'selected' : ''}>?</option>
-                <option value="yes" ${cycleState(c) === 'yes' ? 'selected' : ''}>🚲 Yes</option>
-                <option value="no" ${cycleState(c) === 'no' ? 'selected' : ''}>No</option>
-              </select>
-            </td>
-            <td class="p-2">
-              <select onchange="app.updateCadetField('${c.id}', 'company', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold text-slate-300 focus:border-amber-500 focus:outline-none">
-                <option value="Jessami" ${c.company === 'Jessami' ? 'selected' : ''}>Jessami</option>
-                <option value="Kohima" ${c.company === 'Kohima' ? 'selected' : ''}>Kohima</option>
-                <option value="Naushera" ${c.company === 'Naushera' ? 'selected' : ''}>Naushera</option>
-              </select>
-            </td>
-            <td class="p-2 text-center">
-              <button onclick="app.removeCadet('${c.id}')" class="text-slate-500 hover:text-rose-500 transition-colors p-1" title="Remove Cadet">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-              </button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-
+      updateRosterSummary() {
+        const cadets = this.state.cadets;
+        const n = f => cadets.filter(f).length;
         document.getElementById('modalRosterCountBadge').textContent = `${cadets.length} Cadets`;
-        document.getElementById('badgeCountLCPL').textContent = lcplCount;
-        document.getElementById('badgeCountCDT').textContent = cdtCount;
-        document.getElementById('badgeCountJessami').textContent = jCount;
-        document.getElementById('badgeCountKohima').textContent = kCount;
-        document.getElementById('badgeCountNaushera').textContent = nCount;
+        document.getElementById('rosterSummary').textContent =
+          `Jessami ${n(c => c.company === 'Jessami')} · Kohima ${n(c => c.company === 'Kohima')} · Naushera ${n(c => c.company === 'Naushera')}` +
+          ` | 1st ${n(c => c.year === '1st')} · 2nd ${n(c => c.year === '2nd')} · 3rd ${n(c => c.year === '3rd')} · year not set ${n(c => !YEARS.includes(c.year))}` +
+          ` | ${n(c => cycleState(c) === 'yes')} with a cycle`;
       }
 
-      /** Roster modal: give every cadet currently shown (by the year filter) the chosen year. */
-      setYearForShown() {
+      /** Save one field from the table and restyle just that cell. */
+      rosterEdit(id, field, value, el) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit cadet details.'); return; }
-        const filter = document.getElementById('rosterYearFilter').value;
-        const year = document.getElementById('rosterYearBulk').value;
-        const shown = this.state.cadets.filter(c => yearMatches(c, filter) && c.year !== year);
-        if (!shown.length) { this.showToast('Nothing to change.'); return; }
-        if (!confirm(`Set ${shown.length} cadet(s) to ${year} year?`)) return;
-        shown.forEach(c => { c.year = year; });
-        this.logHistory('roster-year-set', null, `Set ${shown.length} cadet(s) to ${year} year`);
+        const cadet = this.state.cadets.find(c => c.id === id);
+        if (!cadet) return;
+        let v = String(value ?? '').trim();
+        if (field === 'name') {
+          v = v.replace(/\s+/g, ' ');
+          if (!v) { this.showToast('Name cannot be empty.'); if (el) el.value = cadet.name; return; }
+          const dup = this.state.cadets.find(c => c.id !== id && c.name.toLowerCase() === v.toLowerCase());
+          if (dup && !confirm(`Another cadet is already called “${dup.name}” (${dup.company}). Keep both with the same name?`)) { if (el) el.value = cadet.name; return; }
+        }
+        if (field === 'cycle') v = v === 'yes' ? 'yes' : 'no';
+        if ((cadet[field] || '') === v) return;
+        cadet[field] = v;
         this.saveStorage();
-        this.renderModalRosterTable();
-        this.renderAll();
-        renderAvailabilityResults();
-        this.showToast(`${shown.length} cadet(s) set to ${year} year`);
+        // Restyle in place (no full redraw).
+        if (el) {
+          if (field === 'wing') { el.classList.toggle('text-sky-400', v === 'SD'); el.classList.toggle('text-rose-400', v === 'SW'); }
+          if (field === 'year') { const set = YEARS.includes(v); el.classList.toggle('text-violet-300', set); el.classList.toggle('text-amber-400', !set); el.classList.toggle('border-amber-700/60', !set); }
+          if (field === 'cycle') {
+            const yes = v === 'yes';
+            el.textContent = yes ? 'Yes' : 'No';
+            el.setAttribute('aria-pressed', String(yes));
+            el.setAttribute('onclick', `app.rosterEdit('${id}', 'cycle', '${yes ? 'no' : 'yes'}', this)`);
+            el.className = `w-full px-2 py-1 rounded-md border text-xs font-bold ${yes ? 'bg-teal-900/40 border-teal-700/60 text-teal-300' : 'bg-slate-900 border-slate-700 text-slate-500'}`;
+          }
+          el.closest('tr')?.classList.add('roster-saved');
+          setTimeout(() => el.closest('tr')?.classList.remove('roster-saved'), 700);
+        }
+        this.updateRosterSummary();
+        this.refreshAfterRosterChange();
       }
 
+      /** Kept for older callers: change one field (redraws the table). */
       updateCadetField(id, field, value) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit cadet details.'); return; }
         const cadet = this.state.cadets.find(c => c.id === id);
-        if (cadet) {
-          cadet[field] = value.trim();
-          this.saveStorage();
-          this.renderModalRosterTable();
-          this.renderAll();
-        }
+        if (!cadet) return;
+        cadet[field] = field === 'cycle' ? (String(value).trim() === 'yes' ? 'yes' : 'no') : String(value).trim();
+        this.saveStorage();
+        if (!document.getElementById('rosterModal').classList.contains('hidden')) this.renderModalRosterTable();
+        this.refreshAfterRosterChange();
       }
 
-      addNewCadetRow() {
-        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can add a cadet.'); return; }
-        const newNum = this.state.cadets.length + 1;
-        const newId = 'cadet-' + Date.now();
-        this.state.cadets.push({
-          id: newId, rank: 'CDT', name: `Cadet ${newNum}`, wing: 'SD', company: 'Naushera', year: ''
-        });
-        this.saveStorage();
+      refreshAfterRosterChange() {
         this.renderEventDropdown();
-        this.renderModalRosterTable();
         this.renderAll();
-        this.showToast(`Added cadet #${newNum}. You can rename and assign them above.`);
+        renderAvailabilityResults();
+        renderRosterDirectory();
+      }
+
+      // ---- ticks + bulk changes ----
+      tickRosterRow(id, checked) {
+        if (checked) this.rosterUI.ticked.add(id); else this.rosterUI.ticked.delete(id);
+        const tr = document.querySelector(`#modalRosterTableBody tr[data-cadet-id="${id}"]`);
+        if (tr) { tr.classList.toggle('bg-amber-950/30', checked); tr.classList.toggle('hover:bg-slate-800/40', !checked); }
+        this.updateRosterBulkBar();
+      }
+
+      tickAllShownRoster(checked) {
+        this.rosterShown().forEach(c => { if (checked) this.rosterUI.ticked.add(c.id); else this.rosterUI.ticked.delete(c.id); });
+        this.renderModalRosterTable();
+      }
+
+      clearRosterTicks() {
+        this.rosterUI.ticked.clear();
+        this.renderModalRosterTable();
+      }
+
+      updateRosterBulkBar() {
+        const n = this.rosterUI.ticked.size;
+        document.getElementById('rosterBulkBar').classList.toggle('hidden', !n);
+        document.getElementById('rosterTickCount').textContent = n;
+        const shown = this.rosterShown();
+        const all = document.getElementById('rosterTickAll');
+        all.checked = shown.length > 0 && shown.every(c => this.rosterUI.ticked.has(c.id));
+        all.indeterminate = !all.checked && shown.some(c => this.rosterUI.ticked.has(c.id));
+        if (!document.getElementById('rosterBulkValue').options.length) this.updateRosterBulkValues();
+      }
+
+      updateRosterBulkValues() {
+        const field = document.getElementById('rosterBulkField').value;
+        const opts = {
+          year: [['1st', '1st year'], ['2nd', '2nd year'], ['3rd', '3rd year'], ['', 'Not set']],
+          cycle: [['yes', 'Has cycle'], ['no', 'No cycle']],
+          company: [['Jessami', 'Jessami'], ['Kohima', 'Kohima'], ['Naushera', 'Naushera']],
+          wing: [['SD', 'SD'], ['SW', 'SW']],
+          rank: RANKS.map(r => [r, r])
+        }[field];
+        document.getElementById('rosterBulkValue').innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+      }
+
+      applyRosterBulk() {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can edit cadet details.'); return; }
+        const field = document.getElementById('rosterBulkField').value;
+        const value = document.getElementById('rosterBulkValue').value;
+        const label = document.getElementById('rosterBulkValue').selectedOptions[0]?.textContent || value;
+        const targets = this.state.cadets.filter(c => this.rosterUI.ticked.has(c.id) && (field === 'cycle' ? cycleState(c) : (c[field] || '')) !== value);
+        if (!targets.length) { this.showToast('Ticked cadets already have that.'); return; }
+        targets.forEach(c => { c[field] = value; });
+        this.logHistory('roster-bulk-edit', null, `Set ${field} to ${label} for ${targets.length} cadet(s)`);
+        this.saveStorage();
+        this.rosterUI.ticked.clear();
+        this.renderModalRosterTable();
+        this.refreshAfterRosterChange();
+        this.showToast(`${targets.length} cadet(s): ${field} set to ${label}`);
+      }
+
+      removeTickedCadets() {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can remove cadets.'); return; }
+        const targets = this.state.cadets.filter(c => this.rosterUI.ticked.has(c.id));
+        if (!targets.length) return;
+        if (targets.length >= this.state.cadets.length) { this.showToast('The roster must keep at least one cadet.'); return; }
+        if (!confirm(`Remove ${targets.length} cadet(s) from the roster?\n\n${targets.slice(0, 15).map(c => c.name).join(', ')}${targets.length > 15 ? ' …' : ''}\n\nTheir past task records are kept.`)) return;
+        const gone = new Set(targets.map(c => c.id));
+        this.state.cadets = this.state.cadets.filter(c => !gone.has(c.id));
+        gone.forEach(id => this.state.selectedCadets.delete(id));
+        this.rosterUI.ticked.clear();
+        this.logHistory('cadet-removed', null, `Removed ${targets.length} cadet(s): ${targets.map(c => c.name).join(', ')}`);
+        this.saveStorage();
+        this.renderModalRosterTable();
+        this.refreshAfterRosterChange();
+        this.showToast(`Removed ${targets.length} cadet(s).`);
+      }
+
+      addCadetFromForm() {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can add a cadet.'); return; }
+        const val = id => document.getElementById(id).value;
+        const name = val('addCadetName').trim().replace(/\s+/g, ' ');
+        if (!name) { this.showToast('Enter the cadet’s name.'); document.getElementById('addCadetName').focus(); return; }
+        const dup = this.state.cadets.find(c => c.name.toLowerCase() === name.toLowerCase());
+        if (dup && !confirm(`“${dup.name}” is already on the roster (${dup.company}). Add another cadet with the same name?`)) return;
+        const cadet = { id: `cadet-${Date.now().toString(36)}`, rank: val('addCadetRank'), name, wing: val('addCadetWing'), company: val('addCadetCompany'), year: val('addCadetYear'), cycle: val('addCadetCycle') === 'yes' ? 'yes' : 'no' };
+        this.state.cadets.push(cadet);
+        this.logHistory('cadet-added', cadet.id, `Added cadet: ${cadet.rank} ${cadet.name} (${cadet.company})`);
+        this.saveStorage();
+        document.getElementById('addCadetName').value = '';
+        // Show the new cadet: search for them so they're on screen.
+        this.resetRosterFilters(false);
+        this.rosterUI.q = name;
+        document.getElementById('rosterSearch').value = name;
+        this.renderModalRosterTable();
+        this.refreshAfterRosterChange();
+        document.getElementById('addCadetName').focus();
+        this.showToast(`Added ${cadet.rank} ${cadet.name} to ${cadet.company}.`);
       }
 
       removeCadet(id) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can remove a cadet.'); return; }
-        if (this.state.cadets.length <= 1) {
-          this.showToast("Roster must have at least one cadet.");
-          return;
-        }
+        if (this.state.cadets.length <= 1) { this.showToast("Roster must have at least one cadet."); return; }
         const removedCadet = this.state.cadets.find(c => c.id === id);
-        this.logHistory('cadet-removed', id, `Removed cadet from active roster: ${removedCadet ? removedCadet.name : id}`);
+        if (!removedCadet) return;
+        if (!confirm(`Remove ${removedCadet.rank || 'CDT'} ${removedCadet.name} (${removedCadet.company}) from the roster?\n\nTheir past task records are kept.`)) return;
+        this.logHistory('cadet-removed', id, `Removed cadet from active roster: ${removedCadet.name}`);
         this.state.cadets = this.state.cadets.filter(c => c.id !== id);
         this.state.selectedCadets.delete(id);
+        this.rosterUI.ticked.delete(id);
         this.saveStorage();
-        this.renderEventDropdown();
         this.renderModalRosterTable();
-        this.renderAll();
+        this.refreshAfterRosterChange();
       }
 
       /**
@@ -2372,7 +2636,8 @@
         const parts = line.split(/[,\t]/).map(p => p.trim());
         const out = {};
         let rest;
-        if (parts.length >= 4) { out.rank = parts[0]; out.name = parts[1]; rest = parts.slice(2); }
+        const firstIsRank = RANKS.includes(String(parts[0] || '').toUpperCase().replace(/\./g, ''));
+        if (parts.length >= 5 || (parts.length === 4 && firstIsRank)) { out.rank = parts[0]; out.name = parts[1]; rest = parts.slice(2); }
         else { out.name = parts[0]; rest = parts.slice(1); }
         const [wing, coy, year] = rest;
         const errors = [];
@@ -2785,7 +3050,7 @@
           this.teamMembers(team).forEach(c => {
             const rec = this.peekRecord(c.id, ev);
             if (recordStatus(rec) === 'excused') { excusedLines.push(`${c.rank || 'CDT'} ${c.name} (${team.name}) – ${rec.note.trim()}`); return; }
-            msg += `${++n}. ${c.rank || 'CDT'} ${c.name} (${c.company})${rec.done ? ' ✅' : ''}\n`;
+            msg += `${++n}. ${c.rank || 'CDT'} ${c.name} (${c.company})${rec.done ? ' – done' : ''}\n`;
           });
         });
         if (excusedLines.length) msg += `\nWith reason (not counted):\n` + excusedLines.map((l, i) => `${i + 1}. ${l}`).join('\n') + '\n';
@@ -3050,7 +3315,7 @@
         const work = prompt(`What work ${cadetIds.length === 1 ? 'was ' + names[0] : 'were these ' + cadetIds.length + ' cadets'} called for? (optional)\n\n${names.join(', ')}`, '');
         if (work === null) return; // cancelled
         const { slot } = currentSlot();
-        const entry = { id: `duty-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), cadetIds, work: work.trim(), slot, by: this.user?.email || '' };
+        const entry = { id: `duty-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), cadetIds, work: work.trim(), slot, by: this.authorName() };
         if (!Array.isArray(this.state.duties)) this.state.duties = [];
         this.state.duties.unshift(entry);
         this.logHistory('work-call-out', cadetIds.length === 1 ? cadetIds[0] : null, `Called for work${entry.work ? ' (' + entry.work + ')' : ''}: ${names.join(', ')}`);
@@ -3058,6 +3323,14 @@
         this.saveStorage();
         renderAvailabilityResults();
         this.showToast(`Recorded call-out for ${cadetIds.length} cadet(s).`);
+      }
+
+      /** Name shown as the author of a change. Never the email address: the shared data is public. */
+      authorName() {
+        const meta = this.user?.user_metadata || {};
+        const email = this.user?.email || '';
+        const cadet = this.state.cadets.find(c => c.email && email && c.email.toLowerCase() === email.toLowerCase());
+        return meta.full_name || meta.name || (cadet ? cadet.name : (email ? email.split('@')[0] : ''));
       }
 
       deleteCallOut(dutyId) {
@@ -3070,19 +3343,6 @@
         this.saveStorage();
         renderAvailabilityResults();
         this.showToast('Call-out removed.');
-      }
-
-      /** Cycle field: not recorded → has cycle → no cycle → not recorded. */
-      toggleCycle(cadetId) {
-        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change cycle details.'); return; }
-        const c = this.state.cadets.find(x => x.id === cadetId);
-        if (!c) return;
-        const next = { unknown: 'yes', yes: 'no', no: '' }[cycleState(c)];
-        if (next) c.cycle = next; else delete c.cycle;
-        this.saveStorage();
-        renderAvailabilityResults();
-        if (!document.getElementById('rosterModal').classList.contains('hidden')) this.renderModalRosterTable();
-        renderRosterDirectory();
       }
 
       logHistory(action, cadetId, details, eventId) {
@@ -3108,7 +3368,7 @@
             const data = JSON.parse(reader.result);
             if (!Array.isArray(data.cadets) || !Array.isArray(data.events) || !data.events.length) throw new Error('Backup must contain cadets and at least one task.');
             if (!confirm(`Restore backup from ${data.exportedAt || 'unknown date'}? This replaces the current roster, tasks and history. Download a backup of the current data first if you may need it.`)) return;
-            this.state.cadets = data.cadets;
+            this.state.cadets = normalizeCadets(data.cadets);
             this.state.events = data.events.map(ev => normalizeEvent({ ...ev }));
             this.state.activeEventId = this.state.events.some(ev => ev.id === data.activeEventId) ? data.activeEventId : this.state.events[0].id;
             this.state.history = Array.isArray(data.history) ? data.history : [];
@@ -3311,8 +3571,7 @@
       const events = (app.state.events||[]).filter(ev=>!ev.archived);
       const ongoingCard = document.getElementById('ongoingTasksCard');
       if (ongoingCard) ongoingCard.classList.toggle('hidden', events.length === 0);
-      const homeTaskTitle = document.querySelector('#homePage button[aria-label="Open Task Master"] h3');
-      if (homeTaskTitle) homeTaskTitle.textContent = events.length ? `Task Master (${events.length})` : 'Task Master';
+      renderHomeStats();
       const count = document.getElementById('ongoingTasksCount'); if (count) count.textContent = `${events.length} active task${events.length===1?'':'s'} to review.`;
       if (events.length === 0) {
         host.innerHTML = '';
@@ -3435,6 +3694,21 @@
       const out = {};
       Object.entries(records || {}).forEach(([id, r]) => { if (r && (r.done || (r.note && String(r.note).trim()) || r.completedAt)) out[id] = r; });
       return out;
+    }
+    /** Make every cadet record safe to display, whatever an old save or a backup file contains. */
+    function normalizeCadets(list) {
+      if (!Array.isArray(list)) return [];
+      const seen = new Set();
+      return list.filter(c => c && typeof c === 'object').map((c, i) => {
+        let id = c.id != null && String(c.id) ? String(c.id) : `cadet-fix-${i}-${Date.now().toString(36)}`;
+        if (seen.has(id)) id = `${id}-${i}`;
+        seen.add(id);
+        return { ...c, id,
+          name: String(c.name ?? '').trim() || 'Unnamed cadet',
+          rank: RANKS.includes(String(c.rank || '').toUpperCase()) ? String(c.rank).toUpperCase() : 'CDT',
+          wing: c.wing === 'SW' ? 'SW' : 'SD',
+          company: ['Jessami', 'Kohima', 'Naushera'].includes(c.company) ? c.company : (c.company ? String(c.company) : 'Jessami') };
+      });
     }
     function normalizeEvent(ev) {
       if (!ev.type) ev.type = 'task';
@@ -3585,12 +3859,12 @@
       const d = new Date(ts);
       return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     }
-    function cycleState(cadet) { return cadet?.cycle === 'yes' ? 'yes' : cadet?.cycle === 'no' ? 'no' : 'unknown'; }
+    // Cycle: only 'yes' means the cadet has one; anything else (including not filled in) = no cycle.
+    function cycleState(cadet) { return cadet?.cycle === 'yes' ? 'yes' : 'no'; }
     function cycleBadgeHtml(cadet) {
       const st = cycleState(cadet);
-      if (st === 'yes') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-teal-900/40 text-teal-300 border-teal-700/50" title="Has a cycle">🚲 Cycle</span>';
-      if (st === 'no') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-slate-700 text-slate-400" title="No cycle">No cycle</span>';
-      return '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-dashed border-slate-700 text-slate-500" title="Cycle not recorded">🚲 ?</span>';
+      if (st === 'yes') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-teal-900/40 text-teal-300 border-teal-700/50" title="Has a cycle">Cycle</span>';
+      return '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-slate-700 text-slate-500" title="No cycle">No cycle</span>';
     }
 
     function setAvailFilter(group, value) {
@@ -3628,7 +3902,7 @@
       if (AVAIL.company !== 'all') parts.push(AVAIL.company);
       if (AVAIL.year !== 'all') parts.push(AVAIL.year === 'none' ? 'year not set' : `${AVAIL.year} year`);
       if (AVAIL.wing !== 'all') parts.push(AVAIL.wing);
-      if (AVAIL.cycle !== 'all') parts.push(AVAIL.cycle === 'yes' ? 'has cycle' : AVAIL.cycle === 'no' ? 'no cycle' : 'cycle not recorded');
+      if (AVAIL.cycle !== 'all') parts.push(AVAIL.cycle === 'yes' ? 'has cycle' : 'no cycle');
       return parts.join(' · ');
     }
     function currentSlot() {
@@ -3681,7 +3955,7 @@
       const filters = availFilterSummary();
       let msg = `*${ticked.length ? 'Selected cadets' : 'Available cadets'} – ${label}*\n`;
       if (filters) msg += `(${filters})\n`;
-      msg += people.map((c, i) => `${i + 1}. ${c.rank || 'CDT'} ${c.name} (${c.company}${YEARS.includes(c.year) ? `, ${c.year} yr` : ''})${cycleState(c) === 'yes' ? ' 🚲' : ''}`).join('\n') + '\n';
+      msg += people.map((c, i) => `${i + 1}. ${c.rank || 'CDT'} ${c.name} (${c.company}${YEARS.includes(c.year) ? `, ${c.year} yr` : ''})${cycleState(c) === 'yes' ? ' (cycle)' : ''}`).join('\n') + '\n';
       app.copyToClipboard(msg, `Copied ${people.length} cadet(s) for WhatsApp`);
     }
 
@@ -3724,7 +3998,7 @@
             <p class="text-[11px] text-slate-500 mt-1">${esc(c.rank || 'CDT')} · ${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))}</p>
             <div class="mt-2 flex flex-wrap items-center gap-1.5">
               <span class="px-1.5 py-0.5 rounded text-[10px] font-black border ${c.wing === 'SD' ? 'bg-sky-900/40 text-sky-400 border-sky-700/50' : 'bg-rose-900/40 text-rose-400 border-rose-700/50'}">${esc(c.wing || '')}</span>
-              ${canEdit ? `<button type="button" onclick="app.toggleCycle('${c.id}')" title="Change: not recorded → has cycle → no cycle">${cycleBadgeHtml(c)}</button>` : cycleBadgeHtml(c)}
+              ${cycleBadgeHtml(c)}
               ${canEdit ? `<button type="button" onclick="app.recordCallOut(['${c.id}'])" class="ml-auto text-[11px] font-bold px-2 py-1 rounded-lg border border-amber-700/60 text-amber-300 hover:bg-amber-900/30" title="Record that ${esc(c.name)} was called for work">+1 called</button>` : ''}
             </div>
           </div>
@@ -3755,13 +4029,13 @@
       // Standard competition ranking: equal counts share a place.
       let place = 0, prev = null;
       rows.forEach((r, i) => { if (r.n !== prev) { place = i + 1; prev = r.n; } r.place = place; });
-      const medal = p => p === 1 ? '🥇' : p === 2 ? '🥈' : p === 3 ? '🥉' : `#${p}`;
+      const medal = p => `${p}`;
       const max = called[0].n;
       const visible = AVAIL.showAllBoard ? rows : called.slice(0, 10);
       const fmtDate = fmtWhen;
       host.innerHTML = `<ol class="space-y-1.5">${visible.map(r => `
           <li class="flex items-center gap-3 rounded-lg ${r.place <= 3 && r.n ? 'bg-amber-950/20 border border-amber-800/40' : 'bg-slate-950/60 border border-slate-800'} px-3 py-2">
-            <span class="w-8 text-center text-sm font-black ${r.place <= 3 && r.n ? '' : 'text-slate-500 font-mono-num text-xs'}">${r.n ? medal(r.place) : '–'}</span>
+            <span class="w-8 text-center font-mono-num ${r.place <= 3 && r.n ? 'text-base font-semibold text-amber-300' : 'text-xs text-slate-500'}">${r.n ? medal(r.place) : '–'}</span>
             <div class="min-w-0 flex-1">
               <p class="text-sm font-semibold text-white truncate">${escapeHtml(r.c.rank || 'CDT')} ${escapeHtml(r.c.name)}</p>
               <div class="mt-1 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-1.5 bg-amber-500 rounded-full" style="width:${max ? Math.round(r.n / max * 100) : 0}%"></div></div>
@@ -3784,11 +4058,159 @@
           <div class="min-w-0 flex-1">
             <p class="text-sm font-semibold text-white">${escapeHtml(d.work || 'Work call-out')}</p>
             <p class="text-[11px] text-slate-400 mt-0.5">${(d.cadetIds || []).map(id => escapeHtml(nameOf(id))).join(', ')}</p>
-            <p class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(fmtWhen(d.at))}${d.slot ? ' · ' + escapeHtml(DAY_NAMES[d.slot.slice(0, 3)] || '') + ' ' + (d.slot.endsWith('1') ? 'first half' : 'second half') : ''}${d.by ? ' · by ' + escapeHtml(d.by) : ''}</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(fmtWhen(d.at))}${d.slot ? ' · ' + escapeHtml(DAY_NAMES[d.slot.slice(0, 3)] || '') + ' ' + (d.slot.endsWith('1') ? 'first half' : 'second half') : ''}${d.by ? ' · by ' + escapeHtml(String(d.by).split('@')[0]) : ''}</p>
           </div>
           ${canEdit ? `<button type="button" onclick="app.deleteCallOut('${escapeHtml(d.id)}')" class="text-[11px] text-slate-500 hover:text-rose-400" title="Remove this call-out (e.g. recorded by mistake)">Undo</button>` : ''}
         </div>`).join('') + (duties.length > 15 ? `<p class="text-[11px] text-slate-500">Showing the latest 15 of ${duties.length}.</p>` : '')
         : '<p class="text-xs text-slate-500">No call-outs recorded yet. Tick available cadets and press “Mark ticked as called for work”.</p>';
+    }
+
+    // ==================== HOME FIGURES ====================
+    /** Live numbers on the home rows: who is free this half, ongoing tasks, roster size. */
+    function renderHomeStats() {
+      const cadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [];
+      const set = (id, n, label) => { const el = document.getElementById(id); if (el) el.innerHTML = `<b>${n}</b><small>${label}</small>`; };
+      const now = new Date();
+      const day = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
+      if (day === 'SUN') set('homeStatAvail', '–', 'no timetable on Sundays');
+      else {
+        const half = now.getHours() < 13 ? '1' : '2';
+        const free = cadets.filter(c => getCadetAvailability(c).includes(day + half)).length;
+        set('homeStatAvail', free, `free this ${half === '1' ? 'first' : 'second'} half`);
+      }
+      const ongoing = (typeof app !== 'undefined' && app && app.state ? app.state.events || [] : []).filter(ev => !ev.archived).length;
+      set('homeStatTasks', ongoing, ongoing === 1 ? 'ongoing task' : 'ongoing tasks');
+      set('homeStatRoster', cadets.length, cadets.length === 1 ? 'cadet' : 'cadets');
+    }
+
+    // ==================== MOTION ====================
+    // Everything here responds to the pointer or to a press. Disabled for reduced motion;
+    // the pointer light is skipped on touch screens.
+    (function setupMotion() {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const fine = window.matchMedia('(pointer: fine)').matches;
+      const root = document.documentElement;
+
+      // Split the home title into letters for its one-time entrance.
+      document.querySelectorAll('[data-split]').forEach(el => {
+        const text = el.textContent;
+        el.setAttribute('aria-label', text);
+        el.innerHTML = [...text].map((ch, i) => `<span class="ch" aria-hidden="true" style="--i:${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
+      });
+
+      // Layers: dim grid, lit grid around the pointer, trailing glow.
+      const layer = (id) => { const d = document.createElement('div'); d.id = id; d.setAttribute('aria-hidden', 'true'); document.body.prepend(d); return d; };
+      layer('fxGridLit'); layer('fxGlow'); layer('fxGrid');
+
+      // Press feedback: ripple from the exact point you pressed.
+      document.addEventListener('pointerdown', e => {
+        const btn = e.target.closest('button, .af-chip, [role="button"]');
+        if (!btn || btn.disabled || reduce) return;
+        const cs = getComputedStyle(btn);
+        if (cs.position === 'static') btn.style.position = 'relative';
+        btn.style.overflow = 'hidden';
+        const r = btn.getBoundingClientRect();
+        const dot = document.createElement('span');
+        dot.className = 'fx-ripple';
+        dot.style.left = `${e.clientX - r.left}px`;
+        dot.style.top = `${e.clientY - r.top}px`;
+        dot.style.setProperty('--rip', Math.ceil(Math.hypot(r.width, r.height) / 6) + 2);
+        btn.appendChild(dot);
+        setTimeout(() => dot.remove(), 600);
+      }, { passive: true });
+
+      if (reduce) return;
+
+      // Pointer tracking. Raw position drives the grid light; the smoothed position drives the glow.
+      let mx = innerWidth / 2, my = innerHeight / 3, gx = mx, gy = my, running = false, seen = false;
+      let tiltEl = null, magnetEl = null, spotEl = null;
+      const PRIMARY = /\bbg-(amber|emerald|violet)-(500|600)\b/;
+
+      function frame() {
+        gx += (mx - gx) * 0.08; gy += (my - gy) * 0.08;   // slow, floaty glow
+        root.style.setProperty('--lx', gx + 'px'); root.style.setProperty('--ly', gy + 'px');
+        if (Math.abs(mx - gx) + Math.abs(my - gy) > 0.3) requestAnimationFrame(frame);
+        else running = false;
+      }
+      const kick = () => { if (!running) { running = true; requestAnimationFrame(frame); } };
+
+      function resetTilt(el) { if (el) { el.style.transform = ''; } }
+      function resetMagnet(el) { if (el) { el.style.translate = ''; } }
+
+      document.addEventListener('pointermove', e => {
+        if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
+        mx = e.clientX; my = e.clientY;
+        root.style.setProperty('--gx', mx + 'px'); root.style.setProperty('--gy', my + 'px');
+        if (!seen && fine) { seen = true; gx = mx; gy = my; }
+        kick();
+
+        const t = e.target instanceof Element ? e.target : null;
+
+        // Light that follows the pointer across the panel/card under it.
+        const spot = t && t.closest('.tool-row, .module-card, [class*="bg-slate-900"][class*="border"]');
+        if (spot !== spotEl) { if (spotEl) { spotEl.style.removeProperty('--px'); spotEl.style.removeProperty('--py'); } spotEl = spot; }
+        if (spot) { const r = spot.getBoundingClientRect(); spot.style.setProperty('--px', (e.clientX - r.left) + 'px'); spot.style.setProperty('--py', (e.clientY - r.top) + 'px'); }
+
+        // Task Master tiles lean toward the pointer.
+        const tile = t && t.closest('.module-card');
+        if (tile !== tiltEl) { resetTilt(tiltEl); tiltEl = tile; }
+        if (tile) {
+          const r = tile.getBoundingClientRect();
+          const nx = (e.clientX - r.left) / r.width - 0.5, ny = (e.clientY - r.top) / r.height - 0.5;
+          tile.style.transform = `perspective(900px) rotateX(${(-ny * 5).toFixed(2)}deg) rotateY(${(nx * 6).toFixed(2)}deg) translateY(-2px)`;
+        }
+
+        // Primary buttons are slightly magnetic.
+        const btn = t && t.closest('button');
+        const magnet = btn && PRIMARY.test(btn.className) ? btn : null;
+        if (magnet !== magnetEl) { resetMagnet(magnetEl); magnetEl = magnet; }
+        if (magnet) {
+          const r = magnet.getBoundingClientRect();
+          const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+          magnet.style.translate = `${(dx * 0.18).toFixed(1)}px ${(dy * 0.28).toFixed(1)}px`;
+        }
+      }, { passive: true });
+
+      document.addEventListener('pointerleave', () => { seen = false; resetTilt(tiltEl); tiltEl = null; resetMagnet(magnetEl); magnetEl = null; });
+      window.addEventListener('blur', () => { resetTilt(tiltEl); tiltEl = null; resetMagnet(magnetEl); magnetEl = null; });
+    })();
+
+    // Escape closes the open dialog (the special-event editor asks first, so a draft isn't lost by accident).
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      const open = [...document.querySelectorAll('.fixed.inset-0')].filter(m => !m.classList.contains('hidden'));
+      const top = open[open.length - 1];
+      if (top) {
+        if (top.id === 'specialEventModal' && !confirm('Close the special event editor? Unsaved changes will be lost.')) return;
+        top.classList.add('hidden');
+        e.preventDefault();
+        return;
+      }
+      closeMemoryMenu();
+      document.getElementById('accountDropdown')?.classList.add('hidden');
+      app?.closeCopyMenu?.();
+    });
+
+    // Short entrance whenever a page or Task Master section is switched to.
+    function playEnter(el) {
+      if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      el.classList.remove('fx-enter'); void el.offsetWidth; el.classList.add('fx-enter');
+    }
+    {
+      const switchPage = switchCadetFlowPage;
+      switchCadetFlowPage = function (page) {
+        const r = switchPage(page);
+        const id = { home: 'homePage', availability: 'availabilityPage', directory: 'directoryPage' }[page] || 'rosterPage';
+        if (page !== 'home') playEnter(document.getElementById(id));
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        return r;
+      };
+      const switchSection = showTaskMasterSection;
+      showTaskMasterSection = function (section) {
+        const r = switchSection(section);
+        playEnter(document.getElementById({ home: 'taskMasterHome', archive: 'taskArchivePage', ongoing: 'taskOngoingPage', workspace: 'taskWorkspace' }[section]));
+        return r;
+      };
     }
 
     let app;
