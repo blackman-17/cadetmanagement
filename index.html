@@ -23,6 +23,9 @@
     .cf-page-tab[aria-selected="false"] { background:#0f172a; color:#cbd5e1; border-color:#334155; }
     .cf-page-tab:focus-visible { outline:2px solid #fbbf24; outline-offset:2px; }
     .font-mono-num { font-family: 'JetBrains Mono', monospace; }
+    .af-chip { padding: .25rem .625rem; border: 1px solid #334155; background: #1e293b; color: #cbd5e1; font-weight: 600; }
+    .af-chip:hover { background: #334155; }
+    .af-chip[aria-pressed="true"] { background: #f59e0b; border-color: #f59e0b; color: #0f172a; font-weight: 800; }
     .badge-check { transition: all 0.15s ease-in-out; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #0f172a; }
@@ -76,6 +79,9 @@
     body:not(.can-edit) button[onclick*="unarchiveTaskById"],
     body:not(.can-edit) button[onclick*="openSpecialEventModal"],
     body:not(.can-edit) button[onclick*="setTeamDone"],
+    body:not(.can-edit) button[onclick*="recordCallOut"],
+    body:not(.can-edit) button[onclick*="deleteCallOut"],
+    body:not(.can-edit) button[onclick*="toggleCycle"],
     body:not(.can-edit) #restoreFileInput { display: none !important; }
     /* Read-only status badges shown to visitors in place of editor toggles. */
     body.can-edit .viewer-only { display: none !important; }
@@ -593,35 +599,54 @@
           <div>
             <p class="text-[10px] uppercase tracking-[.18em] font-black text-amber-400">NCC tools</p>
             <h2 id="availabilityHeading" class="text-xl sm:text-2xl font-black text-white mt-1">Cadet Availability Finder</h2>
-            <p class="text-sm text-slate-400 mt-1">Find active roster cadets marked free for a day and half.</p>
+            <p class="text-sm text-slate-400 mt-1">Find cadets free for a day and half, call them for work, and keep the load fair.</p>
           </div>
           <span class="text-[11px] text-slate-500 border border-slate-700 rounded-lg px-3 py-2">Uses the current CadetFlow roster</span>
         </div>
-        <div class="grid sm:grid-cols-2 gap-4 mt-6">
-          <label class="text-xs font-bold text-slate-300">Select day
+        <div class="grid grid-cols-2 gap-4 mt-6">
+          <label class="text-xs font-bold text-slate-300">Day
             <select id="availabilityDay" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
               <option value="MON">Monday</option><option value="TUE">Tuesday</option><option value="WED">Wednesday</option><option value="THU">Thursday</option><option value="FRI">Friday</option><option value="SAT">Saturday</option>
             </select>
           </label>
-          <label class="text-xs font-bold text-slate-300 sm:col-span-2 sm:order-last">Year
-            <select id="availabilityYear" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
-              <option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option>
-            </select>
-          </label>
-          <label class="text-xs font-bold text-slate-300">Select half
+          <label class="text-xs font-bold text-slate-300">Half
             <select id="availabilityHalf" onchange="renderAvailabilityResults()" class="mt-2 block w-full rounded-xl bg-slate-950 border border-slate-700 text-white px-3 py-3 text-sm focus:outline-none focus:border-amber-500">
               <option value="1">First Half</option><option value="2">Second Half</option>
             </select>
           </label>
         </div>
+        <div id="availabilityFilters" class="mt-4 space-y-2 text-xs">
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Company</span><button type="button" data-af="company" data-val="all" onclick="setAvailFilter('company', 'all')" class="af-chip">All</button><button type="button" data-af="company" data-val="Jessami" onclick="setAvailFilter('company', 'Jessami')" class="af-chip">Jessami</button><button type="button" data-af="company" data-val="Kohima" onclick="setAvailFilter('company', 'Kohima')" class="af-chip">Kohima</button><button type="button" data-af="company" data-val="Naushera" onclick="setAvailFilter('company', 'Naushera')" class="af-chip">Naushera</button></div>
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Year</span><button type="button" data-af="year" data-val="all" onclick="setAvailFilter('year', 'all')" class="af-chip">All</button><button type="button" data-af="year" data-val="1st" onclick="setAvailFilter('year', '1st')" class="af-chip">1st</button><button type="button" data-af="year" data-val="2nd" onclick="setAvailFilter('year', '2nd')" class="af-chip">2nd</button><button type="button" data-af="year" data-val="3rd" onclick="setAvailFilter('year', '3rd')" class="af-chip">3rd</button><button type="button" data-af="year" data-val="none" onclick="setAvailFilter('year', 'none')" class="af-chip">Not set</button></div>
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Wing</span><button type="button" data-af="wing" data-val="all" onclick="setAvailFilter('wing', 'all')" class="af-chip">All</button><button type="button" data-af="wing" data-val="SD" onclick="setAvailFilter('wing', 'SD')" class="af-chip">SD</button><button type="button" data-af="wing" data-val="SW" onclick="setAvailFilter('wing', 'SW')" class="af-chip">SW</button></div>
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Cycle</span><button type="button" data-af="cycle" data-val="all" onclick="setAvailFilter('cycle', 'all')" class="af-chip">All</button><button type="button" data-af="cycle" data-val="yes" onclick="setAvailFilter('cycle', 'yes')" class="af-chip">🚲 Has cycle</button><button type="button" data-af="cycle" data-val="no" onclick="setAvailFilter('cycle', 'no')" class="af-chip">No cycle</button><button type="button" data-af="cycle" data-val="unknown" onclick="setAvailFilter('cycle', 'unknown')" class="af-chip">Not recorded</button></div>
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Sort</span><button type="button" data-af="sort" data-val="fewest" onclick="setAvailFilter('sort', 'fewest')" class="af-chip">Fewest calls first</button><button type="button" data-af="sort" data-val="name" onclick="setAvailFilter('sort', 'name')" class="af-chip">Name</button><button type="button" data-af="sort" data-val="company" onclick="setAvailFilter('sort', 'company')" class="af-chip">Company</button></div>
+        </div>
         <div id="availabilityResults" class="mt-5" aria-live="polite"></div>
       </div>
+
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5" aria-labelledby="leaderboardHeading">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 id="leaderboardHeading" class="font-extrabold text-white">Work call-out leaderboard</h3>
+            <p class="text-xs text-slate-500 mt-0.5">How often each cadet has been called for work. Uses the company / year / wing / cycle filters above.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 text-xs"><button type="button" data-af="period" data-val="all" onclick="setAvailFilter('period', 'all')" class="af-chip">All time</button><button type="button" data-af="period" data-val="30" onclick="setAvailFilter('period', '30')" class="af-chip">Last 30 days</button><button type="button" data-af="period" data-val="month" onclick="setAvailFilter('period', 'month')" class="af-chip">This month</button></div>
+        </div>
+        <div id="dutyLeaderboard" class="mt-3"></div>
+      </div>
+
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
+        <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-white">Recent call-outs</h3><span id="dutyLogCount" class="text-xs font-bold rounded-full bg-slate-800 text-slate-300 px-2.5 py-1">0</span></div>
+        <div id="dutyLog" class="mt-3 space-y-2"></div>
+      </div>
+
       <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
         <div class="flex items-center justify-between gap-3"><h3 class="font-extrabold text-white">Schedule not assigned</h3><span id="availabilityUnassignedCount" class="text-xs font-bold rounded-full bg-slate-800 text-slate-300 px-2.5 py-1">0</span></div>
-        <p class="text-xs text-slate-500 mt-1 mb-3">Active cadets without a timetable yet. These cadets are not assumed to be unavailable.</p>
+        <p class="text-xs text-slate-500 mt-1 mb-3">Cadets (matching the filters) without a timetable yet. These cadets are not assumed to be unavailable.</p>
         <div id="availabilityUnassigned" class="space-y-2"></div>
       </div>
-      <p class="text-[11px] text-slate-500 px-1">Availability is carried over from the original static list. A missing schedule means “not assigned/unknown”, not “unavailable”. This page is view-only; approved seniors still manage the main roster through the existing CadetFlow controls.</p>
+      <p class="text-[11px] text-slate-500 px-1">Availability is carried over from the original static list. A missing schedule means “not assigned/unknown”, not “unavailable”. Anyone can view this page; only approved editors can record call-outs or change cycle details.</p>
     </section>
 
   </main>
@@ -715,6 +740,7 @@
               <th class="p-2.5">Cadet Name</th>
               <th class="p-2.5 w-24">Wing</th>
               <th class="p-2.5 w-24">Year</th>
+              <th class="p-2.5 w-24">Cycle</th>
               <th class="p-2.5 w-32">Company</th>
               <th class="p-2.5 w-12 text-center">Action</th>
             </tr>
@@ -1080,6 +1106,7 @@
           events: [],
           activeEventId: null,
           history: [],
+          duties: [],   // work call-outs from the Availability page: { id, at, cadetIds, work, slot, by }
           selectedCadets: new Set(),
           filters: {
             company: 'all',
@@ -1136,6 +1163,7 @@
             this.state.events = (data.events && data.events.length > 0) ? data.events : [...DEFAULT_EVENTS];
             this.state.activeEventId = data.activeEventId || this.state.events[0].id;
             this.state.history = Array.isArray(data.history) ? data.history : [];
+            this.state.duties = Array.isArray(data.duties) ? data.duties : [];
             this.state.events.forEach(ev => normalizeEvent(ev));
           } else {
             this.state.cadets = [...USER_EXACT_37_CADETS];
@@ -1162,7 +1190,8 @@
           // Leave out untouched (empty) records so they don't count as changes.
           events: this.state.events.map(ev => ({ ...ev, records: compactRecords(ev.records) })),
           activeEventId: this.state.activeEventId,
-          history: this.state.history || []
+          history: this.state.history || [],
+          duties: this.state.duties || []
         };
       }
 
@@ -1316,6 +1345,7 @@
         this.state.events = Array.isArray(data.events) ? data.events : [];
         this.state.activeEventId = this.state.events.some(e => e.id === data.activeEventId) ? data.activeEventId : (this.state.events[0]?.id || null);
         this.state.history = Array.isArray(data.history) ? data.history : [];
+        this.state.duties = Array.isArray(data.duties) ? data.duties : [];
         this.state.events.forEach(ev => normalizeEvent(ev));
         // Drop ticked checkboxes for cadets that no longer exist.
         const ids = new Set(this.state.cadets.map(c => c.id));
@@ -1686,6 +1716,7 @@
         const homeCount = document.getElementById('homeCadetCount');
         if (homeCount) homeCount.textContent = `${cadets.length} active cadets`;
         if (typeof renderRosterDirectory === 'function') renderRosterDirectory();
+        if (typeof renderAvailabilityResults === 'function' && !document.getElementById('availabilityPage')?.classList.contains('hidden')) renderAvailabilityResults();
 
         const isSpecial = ev?.type === 'special';
         document.getElementById('standardTaskView')?.classList.toggle('hidden', isSpecial);
@@ -2240,6 +2271,13 @@
               <select onchange="app.updateCadetField('${c.id}', 'year', this.value)" class="w-full px-2 py-1 bg-slate-900 border ${c.year ? 'border-slate-700 text-violet-300' : 'border-amber-700/60 text-amber-400'} rounded-lg text-xs font-bold focus:border-amber-500 focus:outline-none" aria-label="Year">
                 <option value="" ${!YEARS.includes(c.year) ? 'selected' : ''}>Not set</option>
                 ${YEARS.map(y => `<option value="${y}" ${c.year === y ? 'selected' : ''}>${y}</option>`).join('')}
+              </select>
+            </td>
+            <td class="p-2">
+              <select onchange="app.updateCadetField('${c.id}', 'cycle', this.value)" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-bold ${cycleState(c) === 'yes' ? 'text-teal-300' : 'text-slate-400'} focus:border-amber-500 focus:outline-none" aria-label="Cycle">
+                <option value="" ${cycleState(c) === 'unknown' ? 'selected' : ''}>?</option>
+                <option value="yes" ${cycleState(c) === 'yes' ? 'selected' : ''}>🚲 Yes</option>
+                <option value="no" ${cycleState(c) === 'no' ? 'selected' : ''}>No</option>
               </select>
             </td>
             <td class="p-2">
@@ -3002,6 +3040,51 @@
         showTaskMasterSection('workspace');
       }
 
+      // ---- Availability: work call-outs and cycle ----
+      /** Record that cadets were called for work. ids: specific cadets, or the ticked ones on the Availability page. */
+      recordCallOut(ids) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can record call-outs.'); return; }
+        const cadetIds = (ids && ids.length ? ids : tickedAvailable().map(c => c.id)).filter(id => this.state.cadets.some(c => c.id === id));
+        if (!cadetIds.length) { this.showToast('Tick the cadets who were called first.'); return; }
+        const names = cadetIds.map(id => this.state.cadets.find(c => c.id === id).name);
+        const work = prompt(`What work ${cadetIds.length === 1 ? 'was ' + names[0] : 'were these ' + cadetIds.length + ' cadets'} called for? (optional)\n\n${names.join(', ')}`, '');
+        if (work === null) return; // cancelled
+        const { slot } = currentSlot();
+        const entry = { id: `duty-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), cadetIds, work: work.trim(), slot, by: this.user?.email || '' };
+        if (!Array.isArray(this.state.duties)) this.state.duties = [];
+        this.state.duties.unshift(entry);
+        this.logHistory('work-call-out', cadetIds.length === 1 ? cadetIds[0] : null, `Called for work${entry.work ? ' (' + entry.work + ')' : ''}: ${names.join(', ')}`);
+        cadetIds.forEach(id => AVAIL.ticked.delete(id));
+        this.saveStorage();
+        renderAvailabilityResults();
+        this.showToast(`Recorded call-out for ${cadetIds.length} cadet(s).`);
+      }
+
+      deleteCallOut(dutyId) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can remove call-outs.'); return; }
+        const d = (this.state.duties || []).find(x => x.id === dutyId);
+        if (!d) return;
+        if (!confirm(`Remove this call-out${d.work ? ' (“' + d.work + '”)' : ''} for ${(d.cadetIds || []).length} cadet(s)? Their call counts go down by one.`)) return;
+        this.state.duties = this.state.duties.filter(x => x.id !== dutyId);
+        this.logHistory('work-call-out-removed', null, `Removed call-out${d.work ? ' “' + d.work + '”' : ''} from ${this.formatDate(d.at)}`);
+        this.saveStorage();
+        renderAvailabilityResults();
+        this.showToast('Call-out removed.');
+      }
+
+      /** Cycle field: not recorded → has cycle → no cycle → not recorded. */
+      toggleCycle(cadetId) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change cycle details.'); return; }
+        const c = this.state.cadets.find(x => x.id === cadetId);
+        if (!c) return;
+        const next = { unknown: 'yes', yes: 'no', no: '' }[cycleState(c)];
+        if (next) c.cycle = next; else delete c.cycle;
+        this.saveStorage();
+        renderAvailabilityResults();
+        if (!document.getElementById('rosterModal').classList.contains('hidden')) this.renderModalRosterTable();
+        renderRosterDirectory();
+      }
+
       logHistory(action, cadetId, details, eventId) {
         if (!Array.isArray(this.state.history)) this.state.history = [];
         this.state.history.unshift({ id: `hist-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, at: Date.now(), action, cadetId: cadetId || null, eventId: eventId || this.state.activeEventId || null, details });
@@ -3009,7 +3092,7 @@
       }
 
       backupAllData() {
-        const payload = { app: 'CadetFlow', schemaVersion: 2, exportedAt: new Date().toISOString(), cadets: this.state.cadets, events: this.state.events, activeEventId: this.state.activeEventId, history: this.state.history || [] };
+        const payload = { app: 'CadetFlow', schemaVersion: 2, exportedAt: new Date().toISOString(), cadets: this.state.cadets, events: this.state.events, activeEventId: this.state.activeEventId, history: this.state.history || [], duties: this.state.duties || [] };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob); const a = document.createElement('a');
         a.href = url; a.download = `CadetFlow_Backup_${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -3029,6 +3112,7 @@
             this.state.events = data.events.map(ev => normalizeEvent({ ...ev }));
             this.state.activeEventId = this.state.events.some(ev => ev.id === data.activeEventId) ? data.activeEventId : this.state.events[0].id;
             this.state.history = Array.isArray(data.history) ? data.history : [];
+            this.state.duties = Array.isArray(data.duties) ? data.duties : [];
             this.state.selectedCadets.clear();
             this.saveStorage(); this.renderEventDropdown(); this.renderAll(); renderOngoingTasks(); renderAvailabilityResults();
             this.showToast('Backup restored successfully.');
@@ -3306,15 +3390,17 @@
       return out;
     }
     function mergeSharedState(base, local, remote) {
-      const pick = s => ({ cadets: s?.cadets || [], events: s?.events || [], history: s?.history || [] });
+      const pick = s => ({ cadets: s?.cadets || [], events: s?.events || [], history: s?.history || [], duties: s?.duties || [] });
       const merged = mergeValue(pick(base), pick(local), pick(remote));
+      merged.duties = (merged.duties || []).sort((a, b) => (b.at || 0) - (a.at || 0));
       merged.history = (merged.history || []).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3000);
       merged.events = (merged.events || []).map(ev => normalizeEvent(ev));
       return merged;
     }
     /** True when two saved states hold the same shared data (ignores which task is open). */
     function stateEqual(a, b) {
-      return deepEqual({ cadets: a?.cadets, events: a?.events, history: a?.history }, { cadets: b?.cadets, events: b?.events, history: b?.history });
+      const pick = s => ({ cadets: s?.cadets, events: s?.events, history: s?.history, duties: s?.duties || [] });
+      return deepEqual(pick(a), pick(b));
     }
 
     // Fill in fields missing from older saved data so every event has a consistent shape.
@@ -3481,31 +3567,228 @@
               <span class="ml-auto flex items-center gap-1.5">
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-black border ${c.wing === 'SD' ? 'bg-sky-900/40 text-sky-400 border-sky-700/50' : 'bg-rose-900/40 text-rose-400 border-rose-700/50'}">${escapeHtml(c.wing || '')}</span>
                 ${yearBadgeHtml(c.year)}
+                ${cycleState(c) === 'yes' ? cycleBadgeHtml(c) : ''}
               </span>
             </li>`).join('')}</ul>` : '<p class="px-4 py-6 text-xs text-slate-500 text-center">No cadets match these filters.</p>'}
         </section>`;
       }).join('');
     }
 
+    // ==================== CADET AVAILABILITY ====================
+    // Filters/sort/ticks are per viewer (not saved). Call-outs (app.state.duties) and the
+    // cadet's cycle field are shared data, editable by approved editors only.
+    const AVAIL = { company: 'all', year: 'all', wing: 'all', cycle: 'all', sort: 'fewest', period: 'all', ticked: new Set(), showAllBoard: false };
+    const DAY_NAMES = { MON: 'Monday', TUE: 'Tuesday', WED: 'Wednesday', THU: 'Thursday', FRI: 'Friday', SAT: 'Saturday' };
+
+    function fmtWhen(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+    function cycleState(cadet) { return cadet?.cycle === 'yes' ? 'yes' : cadet?.cycle === 'no' ? 'no' : 'unknown'; }
+    function cycleBadgeHtml(cadet) {
+      const st = cycleState(cadet);
+      if (st === 'yes') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-teal-900/40 text-teal-300 border-teal-700/50" title="Has a cycle">🚲 Cycle</span>';
+      if (st === 'no') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-slate-700 text-slate-400" title="No cycle">No cycle</span>';
+      return '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border border-dashed border-slate-700 text-slate-500" title="Cycle not recorded">🚲 ?</span>';
+    }
+
+    function setAvailFilter(group, value) {
+      AVAIL[group] = value;
+      if (group === 'period') AVAIL.showAllBoard = false;
+      renderAvailabilityResults();
+    }
+
+    function availCadets() {
+      return (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [...USER_EXACT_37_CADETS];
+    }
+    function availDuties() {
+      return (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.duties)) ? app.state.duties : [];
+    }
+    function passesAvailFilters(c) {
+      return (AVAIL.company === 'all' || c.company === AVAIL.company) && yearMatches(c, AVAIL.year) &&
+        (AVAIL.wing === 'all' || c.wing === AVAIL.wing) && (AVAIL.cycle === 'all' || cycleState(c) === AVAIL.cycle);
+    }
+    /** Times each cadet was called, optionally only since a timestamp. */
+    function callCounts(since = 0) {
+      const counts = {}, last = {};
+      availDuties().forEach(d => {
+        if ((d.at || 0) < since) return;
+        (d.cadetIds || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; if (!last[id] || d.at > last[id]) last[id] = d.at; });
+      });
+      return { counts, last };
+    }
+    function periodStart(period) {
+      if (period === '30') return Date.now() - 30 * 86400000;
+      if (period === 'month') { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); }
+      return 0;
+    }
+    function availFilterSummary() {
+      const parts = [];
+      if (AVAIL.company !== 'all') parts.push(AVAIL.company);
+      if (AVAIL.year !== 'all') parts.push(AVAIL.year === 'none' ? 'year not set' : `${AVAIL.year} year`);
+      if (AVAIL.wing !== 'all') parts.push(AVAIL.wing);
+      if (AVAIL.cycle !== 'all') parts.push(AVAIL.cycle === 'yes' ? 'has cycle' : AVAIL.cycle === 'no' ? 'no cycle' : 'cycle not recorded');
+      return parts.join(' · ');
+    }
+    function currentSlot() {
+      const day = document.getElementById('availabilityDay').value;
+      const half = document.getElementById('availabilityHalf').value;
+      return { day, half, slot: day + half, label: `${DAY_NAMES[day]} · ${half === '1' ? 'First Half' : 'Second Half'}` };
+    }
+    /** Available cadets for the chosen slot, after filters and sort. */
+    function availableList() {
+      const { slot } = currentSlot();
+      const { counts } = callCounts();
+      const list = availCadets().filter(c => passesAvailFilters(c) && getCadetAvailability(c).includes(slot));
+      const order = { Jessami: 0, Kohima: 1, Naushera: 2 };
+      list.sort((a, b) => {
+        if (AVAIL.sort === 'fewest') return (counts[a.id] || 0) - (counts[b.id] || 0) || a.name.localeCompare(b.name);
+        if (AVAIL.sort === 'company') return (order[a.company] ?? 3) - (order[b.company] ?? 3) || a.name.localeCompare(b.name);
+        return a.name.localeCompare(b.name);
+      });
+      return list;
+    }
+
+    function toggleAvailTick(id, checked) {
+      if (checked) AVAIL.ticked.add(id); else AVAIL.ticked.delete(id);
+      updateAvailActionBar();
+    }
+    function toggleAvailTickAll() {
+      const ids = availableList().map(c => c.id);
+      const all = ids.length && ids.every(id => AVAIL.ticked.has(id));
+      ids.forEach(id => all ? AVAIL.ticked.delete(id) : AVAIL.ticked.add(id));
+      renderAvailabilityResults();
+    }
+    function tickedAvailable() {
+      const shown = availableList();
+      return shown.filter(c => AVAIL.ticked.has(c.id));
+    }
+    function updateAvailActionBar() {
+      const n = tickedAvailable().length;
+      const copyBtn = document.getElementById('availCopyBtn');
+      if (copyBtn) copyBtn.textContent = n ? `Copy ticked (${n}) for WhatsApp` : 'Copy list for WhatsApp';
+      const callBtn = document.getElementById('availCallBtn');
+      if (callBtn) { callBtn.textContent = `Mark ticked as called for work${n ? ` (${n})` : ''}`; callBtn.disabled = !n; callBtn.classList.toggle('opacity-50', !n); }
+    }
+
+    /** WhatsApp text for the available list (or just the ticked cadets). */
+    function copyAvailableForWhatsApp() {
+      const ticked = tickedAvailable();
+      const people = ticked.length ? ticked : availableList();
+      const { label } = currentSlot();
+      if (!people.length) { app?.showToast('No available cadets to copy.'); return; }
+      const filters = availFilterSummary();
+      let msg = `*${ticked.length ? 'Selected cadets' : 'Available cadets'} – ${label}*\n`;
+      if (filters) msg += `(${filters})\n`;
+      msg += people.map((c, i) => `${i + 1}. ${c.rank || 'CDT'} ${c.name} (${c.company}${YEARS.includes(c.year) ? `, ${c.year} yr` : ''})${cycleState(c) === 'yes' ? ' 🚲' : ''}`).join('\n') + '\n';
+      app.copyToClipboard(msg, `Copied ${people.length} cadet(s) for WhatsApp`);
+    }
+
     function renderAvailabilityResults() {
       const results = document.getElementById('availabilityResults');
       if (!results) return;
-      // `app` is a top-level lexical binding, not a window property. Read it directly.
-      const allCadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [...USER_EXACT_37_CADETS];
-      const yearSel = document.getElementById('availabilityYear')?.value || 'all';
-      const activeCadets = allCadets.filter(c => yearMatches(c, yearSel));
-      const day = document.getElementById('availabilityDay').value;
-      const half = document.getElementById('availabilityHalf').value;
-      const slot = day + half;
-      const available = activeCadets.filter(c => getCadetAvailability(c).includes(slot));
-      const unassigned = activeCadets.filter(c => getCadetAvailability(c).length === 0);
-      const dayNames = {MON:'Monday',TUE:'Tuesday',WED:'Wednesday',THU:'Thursday',FRI:'Friday',SAT:'Saturday'};
-      const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-      results.innerHTML = `<div class="flex items-center justify-between gap-3 mb-3"><div><h3 class="text-lg font-extrabold text-white">Available cadets</h3><p class="text-xs text-slate-500 mt-0.5">${dayNames[day]} · ${half === '1' ? 'First Half' : 'Second Half'}</p></div><span class="rounded-full bg-amber-500 text-slate-950 px-3 py-1.5 text-sm font-black">${available.length}</span></div>` +
-        (available.length ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">${available.map(c => `<div class="rounded-xl border border-slate-800 bg-slate-950/70 p-3"><p class="text-sm font-bold text-white">${esc(c.name)}</p><p class="text-[11px] text-slate-500 mt-1">${esc(c.rank || 'CDT')} · ${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))}</p></div>`).join('')}</div>` : `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-center text-sm text-slate-400">No matched active cadets are marked free for this slot.</div>`);
-      const unassignedEl = document.getElementById('availabilityUnassigned');
+      // Chip states
+      document.querySelectorAll('#availabilityPage .af-chip').forEach(b => b.setAttribute('aria-pressed', String(AVAIL[b.dataset.af] === b.dataset.val)));
+      const canEdit = typeof app !== 'undefined' && app && app.canEdit && app.canEdit();
+      const { label } = currentSlot();
+      const available = availableList();
+      // Forget ticks for cadets no longer shown.
+      const shownIds = new Set(available.map(c => c.id));
+      [...AVAIL.ticked].forEach(id => { if (!shownIds.has(id)) AVAIL.ticked.delete(id); });
+      const { counts, last } = callCounts();
+      const esc = escapeHtml;
+      const filters = availFilterSummary();
+      const fmtDate = fmtWhen;
+
+      const header = `<div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div><h3 class="text-lg font-extrabold text-white">Available cadets</h3><p class="text-xs text-slate-500 mt-0.5">${label}${filters ? ' · ' + esc(filters) : ''}</p></div>
+          <span class="rounded-full bg-amber-500 text-slate-950 px-3 py-1.5 text-sm font-black" id="availableCount">${available.length}</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <button type="button" id="availCopyBtn" onclick="copyAvailableForWhatsApp()" class="px-3 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">Copy list for WhatsApp</button>
+          ${canEdit && available.length ? `<button type="button" onclick="toggleAvailTickAll()" class="px-3 py-2 text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-300 rounded-xl">Tick / untick all</button>
+          <button type="button" id="availCallBtn" onclick="app.recordCallOut()" class="px-3 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl">Mark ticked as called for work</button>` : ''}
+          ${!canEdit ? '<span class="text-[11px] text-slate-500">Sign in as an editor to record call-outs.</span>' : ''}
+        </div>`;
+
+      const card = c => {
+        const n = counts[c.id] || 0;
+        return `<div class="rounded-xl border ${AVAIL.ticked.has(c.id) ? 'border-amber-500/70 bg-amber-950/20' : 'border-slate-800 bg-slate-950/70'} p-3 flex gap-2.5">
+          ${canEdit ? `<input type="checkbox" class="cadet-cb mt-0.5 shrink-0" ${AVAIL.ticked.has(c.id) ? 'checked' : ''} onchange="toggleAvailTick('${c.id}', this.checked); renderAvailabilityResults()" aria-label="Tick ${esc(c.name)}">` : ''}
+          <div class="min-w-0 flex-1">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm font-bold text-white">${esc(c.name)}</p>
+              <span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded border ${n ? 'border-amber-700/60 text-amber-300 bg-amber-900/20' : 'border-slate-700 text-slate-500'}" title="${n ? `Last called ${esc(fmtDate(last[c.id]))}` : 'Never called'}">Called ${n}×</span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">${esc(c.rank || 'CDT')} · ${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))}</p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-black border ${c.wing === 'SD' ? 'bg-sky-900/40 text-sky-400 border-sky-700/50' : 'bg-rose-900/40 text-rose-400 border-rose-700/50'}">${esc(c.wing || '')}</span>
+              ${canEdit ? `<button type="button" onclick="app.toggleCycle('${c.id}')" title="Change: not recorded → has cycle → no cycle">${cycleBadgeHtml(c)}</button>` : cycleBadgeHtml(c)}
+              ${canEdit ? `<button type="button" onclick="app.recordCallOut(['${c.id}'])" class="ml-auto text-[11px] font-bold px-2 py-1 rounded-lg border border-amber-700/60 text-amber-300 hover:bg-amber-900/30" title="Record that ${esc(c.name)} was called for work">+1 called</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      };
+      results.innerHTML = header + (available.length
+        ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">${available.map(card).join('')}</div>`
+        : `<div class="rounded-xl border border-slate-800 bg-slate-950/60 p-5 text-center text-sm text-slate-400">No cadets ${filters ? 'matching these filters ' : ''}are marked free for this slot.</div>`);
+      updateAvailActionBar();
+
+      const unassigned = availCadets().filter(c => passesAvailFilters(c) && getCadetAvailability(c).length === 0);
       document.getElementById('availabilityUnassignedCount').textContent = unassigned.length;
-      unassignedEl.innerHTML = unassigned.length ? unassigned.map(c => `<div class="rounded-lg bg-slate-950/60 border border-slate-800 px-3 py-2"><p class="text-sm font-semibold text-slate-200">${esc(c.name)}</p><p class="text-[11px] text-slate-500">${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))} · no schedule assigned</p></div>`).join('') : `<p class="text-xs text-slate-500">All active cadets have a matched schedule.</p>`;
+      document.getElementById('availabilityUnassigned').innerHTML = unassigned.length ? unassigned.map(c => `<div class="rounded-lg bg-slate-950/60 border border-slate-800 px-3 py-2"><p class="text-sm font-semibold text-slate-200">${esc(c.name)}</p><p class="text-[11px] text-slate-500">${esc(c.company || 'Company not set')} · ${esc(yearLabel(c.year))} · no schedule assigned</p></div>`).join('') : `<p class="text-xs text-slate-500">All cadets matching the filters have a schedule.</p>`;
+
+      renderDutyLeaderboard();
+      renderDutyLog();
+    }
+
+    function renderDutyLeaderboard() {
+      const host = document.getElementById('dutyLeaderboard');
+      if (!host) return;
+      const { counts, last } = callCounts(periodStart(AVAIL.period));
+      const rows = availCadets().filter(passesAvailFilters)
+        .map(c => ({ c, n: counts[c.id] || 0, last: last[c.id] || 0 }))
+        .sort((a, b) => b.n - a.n || b.last - a.last || a.c.name.localeCompare(b.c.name));
+      const called = rows.filter(r => r.n > 0);
+      if (!called.length) { host.innerHTML = `<p class="text-xs text-slate-500 py-3">No call-outs recorded ${AVAIL.period === 'all' ? 'yet' : 'in this period'}${availFilterSummary() ? ' for these filters' : ''}.</p>`; return; }
+      // Standard competition ranking: equal counts share a place.
+      let place = 0, prev = null;
+      rows.forEach((r, i) => { if (r.n !== prev) { place = i + 1; prev = r.n; } r.place = place; });
+      const medal = p => p === 1 ? '🥇' : p === 2 ? '🥈' : p === 3 ? '🥉' : `#${p}`;
+      const max = called[0].n;
+      const visible = AVAIL.showAllBoard ? rows : called.slice(0, 10);
+      const fmtDate = fmtWhen;
+      host.innerHTML = `<ol class="space-y-1.5">${visible.map(r => `
+          <li class="flex items-center gap-3 rounded-lg ${r.place <= 3 && r.n ? 'bg-amber-950/20 border border-amber-800/40' : 'bg-slate-950/60 border border-slate-800'} px-3 py-2">
+            <span class="w-8 text-center text-sm font-black ${r.place <= 3 && r.n ? '' : 'text-slate-500 font-mono-num text-xs'}">${r.n ? medal(r.place) : '–'}</span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-white truncate">${escapeHtml(r.c.rank || 'CDT')} ${escapeHtml(r.c.name)}</p>
+              <div class="mt-1 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-1.5 bg-amber-500 rounded-full" style="width:${max ? Math.round(r.n / max * 100) : 0}%"></div></div>
+            </div>
+            <span class="hidden sm:inline text-[11px] text-slate-500 whitespace-nowrap">${escapeHtml(r.c.company)} · ${escapeHtml(YEARS.includes(r.c.year) ? r.c.year + ' yr' : 'yr ?')}${r.last ? ' · last ' + escapeHtml(fmtDate(r.last)) : ''}</span>
+            <span class="text-sm font-black text-amber-300 font-mono-num w-10 text-right">${r.n}×</span>
+          </li>`).join('')}</ol>
+        <button type="button" onclick="AVAIL.showAllBoard = !AVAIL.showAllBoard; renderDutyLeaderboard()" class="mt-2 text-[11px] font-semibold text-slate-400 hover:text-slate-200 underline underline-offset-2">${AVAIL.showAllBoard ? 'Show top 10 only' : `Show everyone (${rows.length}, including never called)`}</button>`;
+    }
+
+    function renderDutyLog() {
+      const host = document.getElementById('dutyLog');
+      if (!host) return;
+      const duties = availDuties().slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+      document.getElementById('dutyLogCount').textContent = duties.length;
+      const nameOf = id => { const c = availCadets().find(x => x.id === id); return c ? `${c.rank || 'CDT'} ${c.name}` : 'Removed cadet'; };
+      const canEdit = typeof app !== 'undefined' && app && app.canEdit && app.canEdit();
+      host.innerHTML = duties.length ? duties.slice(0, 15).map(d => `
+        <div class="rounded-lg bg-slate-950/60 border border-slate-800 px-3 py-2 flex items-start gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-white">${escapeHtml(d.work || 'Work call-out')}</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">${(d.cadetIds || []).map(id => escapeHtml(nameOf(id))).join(', ')}</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">${escapeHtml(fmtWhen(d.at))}${d.slot ? ' · ' + escapeHtml(DAY_NAMES[d.slot.slice(0, 3)] || '') + ' ' + (d.slot.endsWith('1') ? 'first half' : 'second half') : ''}${d.by ? ' · by ' + escapeHtml(d.by) : ''}</p>
+          </div>
+          ${canEdit ? `<button type="button" onclick="app.deleteCallOut('${escapeHtml(d.id)}')" class="text-[11px] text-slate-500 hover:text-rose-400" title="Remove this call-out (e.g. recorded by mistake)">Undo</button>` : ''}
+        </div>`).join('') + (duties.length > 15 ? `<p class="text-[11px] text-slate-500">Showing the latest 15 of ${duties.length}.</p>` : '')
+        : '<p class="text-xs text-slate-500">No call-outs recorded yet. Tick available cadets and press “Mark ticked as called for work”.</p>';
     }
 
     let app;
