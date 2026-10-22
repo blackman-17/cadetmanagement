@@ -174,8 +174,8 @@
       #headerSub, #headerCadetCount { display: none; }
 
       /* Dialogs become sheets from the bottom edge; the roster editor fills the screen. */
-      #rosterModal, #newEventModal, #editEventModal, #specialEventModal, #specialTaskModal, #historyModal, #authModal { padding: 0 !important; align-items: flex-end !important; }
-      #rosterModal > div, #newEventModal > div, #editEventModal > div, #specialEventModal > div, #specialTaskModal > div, #historyModal > div, #authModal > div {
+      #rosterModal, #newEventModal, #editEventModal, #specialEventModal, #specialTaskModal, #groupUpdateModal, #historyModal, #authModal { padding: 0 !important; align-items: flex-end !important; }
+      #rosterModal > div, #newEventModal > div, #editEventModal > div, #specialEventModal > div, #specialTaskModal > div, #groupUpdateModal > div, #historyModal > div, #authModal > div {
         max-width: none !important; width: 100% !important; max-height: 94dvh !important; border-radius: 18px 18px 0 0 !important;
         border-left: 0; border-right: 0; border-bottom: 0; padding-bottom: calc(1rem + env(safe-area-inset-bottom)) !important; overflow-y: auto; }
       #rosterModal > div { height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; border-top: 0; overflow: hidden; }
@@ -272,6 +272,8 @@
     body:not(.can-edit) button[onclick*="openSpecialEventModal"],
     body:not(.can-edit) button[onclick*="setTeamDone"],
     body:not(.can-edit) button[onclick*="setGroupDone"],
+    body:not(.can-edit) button[onclick*="openGroupUpdate"],
+    body:not(.can-edit) button[onclick*="deleteGroupUpdate"],
     body:not(.can-edit) button[onclick*="openSpecialTaskModal"],
     body:not(.can-edit) button[onclick*="deleteSpecialTask"],
     body:not(.can-edit) button[onclick*="recordCallOut"],
@@ -361,7 +363,7 @@
         </button>
         <button type="button" class="tool-row" style="--i:3" onclick="switchCadetFlowPage('uniform')" aria-label="Open Uniform requests">
           <span class="tool-name">Uniform</span>
-          <span class="tool-desc">Request berets, badges, belts and more for cadets. CQMS orders, records the amount, then marks them received. Sign-in needed.</span>
+          <span class="tool-desc">Who needs berets, badges, belts and more. Verified seniors make requests; CQMS orders, records the amount, then marks them received.</span>
           <span class="tool-stat" id="homeStatUniform"><b>–</b><small>to order</small></span>
         </button>
       </nav>
@@ -395,7 +397,7 @@
       </section>
       <section id="taskArchivePage" class="hidden space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs uppercase tracking-widest text-amber-400 font-bold">Task Master / Records</p><h2 class="text-2xl font-black text-white mt-1">Archived tasks</h2></div><button class="px-3 py-2 border border-slate-700 text-sm font-bold text-slate-200" onclick="showTaskMasterSection('home')">← Task Master</button></div>
-        <div class="flex flex-wrap gap-3"><label class="text-xs text-slate-400">Year <select id="archiveYearFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select></label><label class="text-xs text-slate-400">Company <select id="archiveCompanyFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="All">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select></label><label class="text-xs text-slate-400">Submission outcome <select id="archiveOutcomeFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All outcomes</option><option value="late">Late submissions</option><option value="missing">Did not submit</option><option value="ontime">Completed / on time</option><option value="excused">With reason (not counted)</option></select></label></div>
+        <div class="flex flex-wrap gap-3"><label class="text-xs text-slate-400">Year <select id="archiveYearFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select></label><label class="text-xs text-slate-400">Company <select id="archiveCompanyFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="All">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select></label><label class="text-xs text-slate-400">Submission outcome <select id="archiveOutcomeFilter" onchange="renderTaskArchive()" class="ml-2 bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white"><option value="all">All outcomes</option><option value="late">Late submissions</option><option value="missing">Did not submit</option><option value="ontime">Completed / on time</option><option value="excused">With reason (not counted)</option></select></label></div>
         <div id="taskArchiveList" class="space-y-3"></div>
       </section>
       <section id="taskOngoingPage" class="hidden space-y-4"><div class="flex items-center justify-between gap-3"><div><p class="text-xs uppercase tracking-widest text-emerald-400 font-bold">Task Master</p><h2 class="text-2xl font-black text-white mt-1">Ongoing tasks</h2></div><button class="px-3 py-2 border border-slate-700 text-sm font-bold text-slate-200" onclick="showTaskMasterSection('home')">← Task Master</button></div><div id="ongoingTasksList" class="space-y-3"></div></section>
@@ -516,6 +518,9 @@
 
     <!-- Standard task view (hidden for special events, which use team cards instead) -->
     <div id="standardTaskView" class="space-y-4">
+    <!-- Group task: one mark for everyone listed -->
+    <div id="groupTaskCard" class="hidden bg-slate-900 rounded-2xl border border-sky-700/40 p-4 sm:p-5 space-y-3"></div>
+
     <!-- Real-time Stats & Company Progress Overview -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <!-- Total Progress Card -->
@@ -656,6 +661,7 @@
           <button onclick="app.setCompanyFilter('Kohima')" id="coyBtn-Kohima" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">
             Kohima (13)
           </button>
+          <button onclick="app.setCompanyFilter('No company')" id="coyBtn-No company" class="hidden px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">No company</button>
           <button onclick="app.setCompanyFilter('Naushera')" id="coyBtn-Naushera" class="px-2.5 py-1 rounded-lg font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition-all">
             Naushera (13)
           </button>
@@ -720,9 +726,6 @@
 
     </div>
 
-    <!-- Group task: one mark for everyone listed -->
-    <div id="groupTaskCard" class="hidden bg-slate-900 rounded-2xl border border-sky-700/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"></div>
-
     <!-- Cadets List Card -->
     <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
       <!-- Table Header -->
@@ -764,12 +767,8 @@
       <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-6">
         <p class="text-[10px] uppercase tracking-[.18em] font-black text-amber-400">CQMS</p>
         <h2 id="uniformHeading" class="text-xl sm:text-2xl font-black text-white mt-1">Uniform requests</h2>
-        <p class="text-sm text-slate-400 mt-1">Request uniform items for cadets. CQMS sees who needs what, marks items ordered with the amount, then received when they arrive.</p>
-        <div id="uniformLocked" class="hidden mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4 flex flex-wrap items-center justify-between gap-3">
-          <p class="text-sm text-slate-300">Sign in to see and make uniform requests.</p>
-          <button type="button" onclick="app.openAuthModal()" class="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl">Sign in</button>
-        </div>
-        <p id="uniformViewOnly" class="hidden mt-3 text-xs text-amber-300">You are signed in with view-only access. Ask the CadetFlow administrator for editor access to make or update requests.</p>
+        <p class="text-sm text-slate-400 mt-1">Who needs which uniform item. Verified seniors add requests; CQMS marks them ordered with the amount, then received when they arrive.</p>
+        <p id="uniformViewOnly" class="hidden mt-3 text-xs text-amber-300">Anyone can see these requests. Only verified seniors can add, update or remove them; sign in if you are one.</p>
       </div>
 
       <div id="uniformContent" class="hidden space-y-4">
@@ -780,7 +779,7 @@
               <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-slate-300">1 · Cadets</span><span id="uniPickCount" class="text-[11px] font-bold text-slate-500">No cadet picked</span></div>
               <div class="flex flex-wrap gap-2">
                 <input type="search" id="uniPickSearch" oninput="renderUniformPicker()" placeholder="Search name…" autocomplete="off" class="flex-1 min-w-[130px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-amber-500">
-                <select id="uniPickCoy" onchange="renderUniformPicker()" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+                <select id="uniPickCoy" onchange="renderUniformPicker()" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select>
                 <select id="uniPickYear" onchange="renderUniformPicker()" aria-label="Year" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
               </div>
               <div id="uniPickList" class="max-h-60 overflow-y-auto border border-slate-700 rounded-xl bg-slate-950 divide-y divide-slate-800"></div>
@@ -834,7 +833,7 @@
             <div class="flex flex-wrap gap-2">
               <input type="search" id="uniSearch" oninput="setUniformFilter('q', this.value)" placeholder="Search cadet…" autocomplete="off" class="flex-1 min-w-[130px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-amber-500">
               <select id="uniItemFilter" onchange="setUniformFilter('item', this.value)" aria-label="Item" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"></select>
-              <select id="uniCoyFilter" onchange="setUniformFilter('company', this.value)" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+              <select id="uniCoyFilter" onchange="setUniformFilter('company', this.value)" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select>
             </div>
           </div>
           <div id="uniBulk" class="uni-edit hidden flex flex-wrap items-center gap-2 bg-slate-950 border border-amber-700/40 rounded-xl p-2 text-xs">
@@ -864,7 +863,7 @@
             <input type="search" id="dirSearch" oninput="renderRosterDirectory()" placeholder="Name…" class="mt-1 block w-full placeholder-slate-600 bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500">
           </label>
           <label class="text-xs font-bold text-slate-300">Company
-            <select id="dirCompany" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+            <select id="dirCompany" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select>
           </label>
           <label class="text-xs font-bold text-slate-300">Year
             <select id="dirYear" onchange="renderRosterDirectory()" class="mt-1 block w-full bg-slate-950 border border-slate-700 text-white px-3 py-2.5 text-sm rounded-xl focus:outline-none focus:border-amber-500"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
@@ -904,7 +903,7 @@
           </label>
         </div>
         <div id="availabilityFilters" class="mt-4 space-y-2 text-xs">
-          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Company</span><button type="button" data-af="company" data-val="all" onclick="setAvailFilter('company', 'all')" class="af-chip">All</button><button type="button" data-af="company" data-val="Jessami" onclick="setAvailFilter('company', 'Jessami')" class="af-chip">Jessami</button><button type="button" data-af="company" data-val="Kohima" onclick="setAvailFilter('company', 'Kohima')" class="af-chip">Kohima</button><button type="button" data-af="company" data-val="Naushera" onclick="setAvailFilter('company', 'Naushera')" class="af-chip">Naushera</button></div>
+          <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Company</span><button type="button" data-af="company" data-val="all" onclick="setAvailFilter('company', 'all')" class="af-chip">All</button><button type="button" data-af="company" data-val="Jessami" onclick="setAvailFilter('company', 'Jessami')" class="af-chip">Jessami</button><button type="button" data-af="company" data-val="Kohima" onclick="setAvailFilter('company', 'Kohima')" class="af-chip">Kohima</button><button type="button" data-af="company" data-val="Naushera" onclick="setAvailFilter('company', 'Naushera')" class="af-chip">Naushera</button><button type="button" data-af="company" data-val="No company" onclick="setAvailFilter('company', 'No company')" class="af-chip">No company</button></div>
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Year</span><button type="button" data-af="year" data-val="all" onclick="setAvailFilter('year', 'all')" class="af-chip">All</button><button type="button" data-af="year" data-val="1st" onclick="setAvailFilter('year', '1st')" class="af-chip">1st</button><button type="button" data-af="year" data-val="2nd" onclick="setAvailFilter('year', '2nd')" class="af-chip">2nd</button><button type="button" data-af="year" data-val="3rd" onclick="setAvailFilter('year', '3rd')" class="af-chip">3rd</button><button type="button" data-af="year" data-val="none" onclick="setAvailFilter('year', 'none')" class="af-chip">Not set</button></div>
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Wing</span><button type="button" data-af="wing" data-val="all" onclick="setAvailFilter('wing', 'all')" class="af-chip">All</button><button type="button" data-af="wing" data-val="SD" onclick="setAvailFilter('wing', 'SD')" class="af-chip">SD</button><button type="button" data-af="wing" data-val="SW" onclick="setAvailFilter('wing', 'SW')" class="af-chip">SW</button></div>
           <div class="flex flex-wrap items-center gap-1.5"><span class="w-16 text-[11px] font-bold uppercase tracking-wider text-slate-500">Cycle</span><button type="button" data-af="cycle" data-val="all" onclick="setAvailFilter('cycle', 'all')" class="af-chip">All</button><button type="button" data-af="cycle" data-val="yes" onclick="setAvailFilter('cycle', 'yes')" class="af-chip">Has cycle</button><button type="button" data-af="cycle" data-val="no" onclick="setAvailFilter('cycle', 'no')" class="af-chip">No cycle</button></div>
@@ -971,7 +970,7 @@
           <svg class="w-4 h-4 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <input type="search" id="rosterSearch" oninput="app.setRosterFilter('q', this.value)" placeholder="Search name…" autocomplete="off" class="w-full pl-8 pr-2 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-600 focus:outline-none focus:border-amber-500">
         </div>
-        <select id="rosterFilterCompany" onchange="app.setRosterFilter('company', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Company"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+        <select id="rosterFilterCompany" onchange="app.setRosterFilter('company', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Company"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select>
         <select id="rosterFilterYear" onchange="app.setRosterFilter('year', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Year"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
         <select id="rosterFilterWing" onchange="app.setRosterFilter('wing', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Wing"><option value="all">SD &amp; SW</option><option value="SD">SD</option><option value="SW">SW</option></select>
         <select id="rosterFilterCycle" onchange="app.setRosterFilter('cycle', this.value)" class="px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500" aria-label="Cycle"><option value="all">Cycle: any</option><option value="yes">Has cycle</option><option value="no">No cycle</option></select>
@@ -1020,11 +1019,11 @@
       <details id="addCadetSection" class="border border-slate-700 rounded-xl bg-slate-950/50 group">
         <summary class="cursor-pointer select-none px-3 py-2 text-xs font-bold text-emerald-300">+ Add a cadet</summary>
         <form id="addCadetForm" onsubmit="event.preventDefault(); app.addCadetFromForm()" class="flex flex-wrap items-end gap-2 px-3 pb-3 text-xs">
-          <label class="text-slate-400">Rank<select id="addCadetRank" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>CDT</option><option>LCPL</option><option>CPL</option><option>SGT</option><option>JUO</option><option>SUO</option></select></label>
+          <label class="text-slate-400">Rank<select id="addCadetRank" onchange="if (['CSM', 'CQMS'].includes(this.value)) document.getElementById('addCadetCompany').value = NO_COMPANY" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>CDT</option><option>LCPL</option><option>CPL</option><option>SGT</option><option>CQMS</option><option>CSM</option><option>JUO</option><option>SUO</option></select></label>
           <label class="text-slate-400 flex-1 min-w-[160px]">Name<input id="addCadetName" type="text" required autocomplete="off" placeholder="Full name" class="block w-full mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"></label>
           <label class="text-slate-400">Wing<select id="addCadetWing" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>SD</option><option>SW</option></select></label>
           <label class="text-slate-400">Year<select id="addCadetYear" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option value="">Not set</option><option value="1st">1st</option><option value="2nd">2nd</option><option value="3rd">3rd</option></select></label>
-          <label class="text-slate-400">Company<select id="addCadetCompany" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>Jessami</option><option>Kohima</option><option>Naushera</option></select></label>
+          <label class="text-slate-400">Company<select id="addCadetCompany" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select></label>
           <label class="text-slate-400">Cycle<select id="addCadetCycle" class="block mt-1 px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500"><option value="no">No cycle</option><option value="yes">Has cycle</option></select></label>
           <button type="submit" class="px-3 py-1.5 font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add cadet</button>
         </form>
@@ -1119,7 +1118,7 @@
         <div id="newWhoPickBox" class="hidden space-y-2">
           <div class="flex flex-wrap gap-2">
             <input type="search" id="newPickSearch" oninput="app.renderTaskPicker('new')" placeholder="Search name…" autocomplete="off" class="flex-1 min-w-[130px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-amber-500">
-            <select id="newPickCoy" onchange="app.renderTaskPicker('new')" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+            <select id="newPickCoy" onchange="app.renderTaskPicker('new')" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select>
             <select id="newPickYear" onchange="app.renderTaskPicker('new')" aria-label="Year" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
             <select id="newPickShow" onchange="app.renderTaskPicker('new')" aria-label="Show" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">Everyone</option><option value="picked">Picked only</option></select>
           </div>
@@ -1211,7 +1210,7 @@
         <div id="editWhoPickBox" class="hidden space-y-2">
           <div class="flex flex-wrap gap-2">
             <input type="search" id="editPickSearch" oninput="app.renderTaskPicker('edit')" placeholder="Search name…" autocomplete="off" class="flex-1 min-w-[130px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-amber-500">
-            <select id="editPickCoy" onchange="app.renderTaskPicker('edit')" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+            <select id="editPickCoy" onchange="app.renderTaskPicker('edit')" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option></select>
             <select id="editPickYear" onchange="app.renderTaskPicker('edit')" aria-label="Year" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
             <select id="editPickShow" onchange="app.renderTaskPicker('edit')" aria-label="Show" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">Everyone</option><option value="picked">Picked only</option></select>
           </div>
@@ -1305,7 +1304,7 @@
               <option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option>
             </select>
             <select id="specialAssignCoy" onchange="app.renderSpecialAssignList()" class="px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs">
-              <option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option>
+              <option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option><option>No company</option>
             </select>
             <select id="specialAssignShow" onchange="app.renderSpecialAssignList()" class="px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs">
               <option value="all">Everyone</option><option value="unassigned">Not in a team</option><option value="assigned">In a team</option>
@@ -1328,6 +1327,35 @@
         <div class="flex gap-2 ml-auto">
           <button type="button" onclick="app.closeModal('specialEventModal')" class="px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 rounded-xl">Cancel</button>
           <button type="button" id="specialSaveBtn" onclick="app.saveSpecialEvent()" class="px-4 py-2 text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white rounded-xl">Create special event</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: progress update on a group task -->
+  <div id="groupUpdateModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[94vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p id="groupUpdateFor" class="text-[11px] font-semibold text-sky-300 truncate"></p>
+          <h3 class="text-lg font-extrabold text-white mt-1">Post an update</h3>
+        </div>
+        <button type="button" onclick="app.closeModal('groupUpdateModal')" class="text-slate-500 hover:text-slate-300 p-1" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <label class="block text-xs font-bold text-slate-300">Update
+        <textarea id="groupUpdateText" rows="4" maxlength="500" placeholder="e.g. Half the store room is cleared; need two more brooms" class="mt-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:border-sky-500"></textarea>
+      </label>
+      <label class="flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+        <input type="checkbox" id="groupUpdateIssue" class="w-3.5 h-3.5 accent-rose-500">
+        Flag this as an issue
+      </label>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+        <p id="groupUpdateError" class="hidden text-xs font-semibold text-rose-300"></p>
+        <div class="flex gap-2 ml-auto">
+          <button type="button" onclick="app.closeModal('groupUpdateModal')" class="px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 rounded-xl">Cancel</button>
+          <button type="button" onclick="app.saveGroupUpdate()" class="px-4 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white rounded-xl">Post update</button>
         </div>
       </div>
     </div>
@@ -1423,13 +1451,20 @@
     const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_sbc6JpS_Gg6ooOQUbmKnUg_ZtdnZPyS';
 
     // Supported Ranks
-    const RANKS = ['CDT', 'LCPL', 'CPL', 'SGT', 'JUO', 'SUO'];
+    const RANKS = ['CDT', 'LCPL', 'CPL', 'SGT', 'CQMS', 'CSM', 'JUO', 'SUO'];
+    // CSM and CQMS are battalion appointments outside the three companies; such cadets have company 'No company'.
+    const COMPANIES = ['Jessami', 'Kohima', 'Naushera'];
+    const NO_COMPANY = 'No company';
+    const COMPANY_CHOICES = [NO_COMPANY, ...COMPANIES];
+    const COMPANY_ORDER = { 'No company': -1, Jessami: 0, Kohima: 1, Naushera: 2 };
 
     const RANK_CONFIG = {
       'CDT': { label: 'CDT', fullName: 'Cadet', badgeClass: 'bg-slate-800 text-slate-300 border-slate-700 font-semibold' },
       'LCPL': { label: 'LCPL', fullName: 'Lance Corporal', badgeClass: 'bg-amber-900/40 text-amber-400 border-amber-700/50 font-bold' },
       'CPL': { label: 'CPL', fullName: 'Corporal', badgeClass: 'bg-teal-900/40 text-teal-400 border-teal-700/50 font-bold' },
       'SGT': { label: 'SGT', fullName: 'Sergeant', badgeClass: 'bg-indigo-900/40 text-indigo-400 border-indigo-700/50 font-bold' },
+      'CQMS': { label: 'CQMS', fullName: 'Company Quarter Master Sergeant', badgeClass: 'bg-sky-900/40 text-sky-300 border-sky-700/50 font-black' },
+      'CSM': { label: 'CSM', fullName: 'Company Sergeant Major', badgeClass: 'bg-orange-900/40 text-orange-300 border-orange-700/50 font-black' },
       'JUO': { label: 'JUO', fullName: 'Junior Under Officer', badgeClass: 'bg-purple-900/40 text-purple-400 border-purple-700/50 font-black' },
       'SUO': { label: 'SUO', fullName: 'Senior Under Officer', badgeClass: 'bg-rose-900/40 text-rose-400 border-rose-700/50 font-black' }
     };
@@ -1885,6 +1920,10 @@
           this.closeModal('specialEventModal');
           this.showToast('The special event you were editing was deleted by another editor.');
         }
+        if (this.updateDraft && !exists(this.updateDraft.eventId)) {
+          this.updateDraft = null;
+          this.closeModal('groupUpdateModal');
+        }
         if (this.taskDraft) {
           const ev = this.state.events.find(e => e.id === this.taskDraft.eventId);
           if (!ev || (this.taskDraft.taskId && !specialTasks(ev).some(t => t.id === this.taskDraft.taskId))) {
@@ -2166,7 +2205,7 @@
         document.getElementById('bulkMarkBar')?.classList.toggle('hidden', groupMode);
         // Company filter buttons count the cadets in this task (they used to be fixed numbers).
         const inTask = ev ? this.eventCadets(ev) : [];
-        ['Jessami', 'Kohima', 'Naushera'].forEach(c => { const b = document.getElementById(`coyBtn-${c}`); if (b) b.textContent = `${c} (${inTask.filter(x => x.company === c).length})`; });
+        COMPANY_CHOICES.forEach(c => { const b = document.getElementById(`coyBtn-${c}`); if (!b) return; const k = inTask.filter(x => x.company === c).length; b.textContent = `${c} (${k})`; if (c === NO_COMPANY) b.classList.toggle('hidden', !k && this.state.filters.company !== c); });
 
         if (!ev || cadets.length === 0) {
           container.innerHTML = '';
@@ -2181,7 +2220,8 @@
         const statsByCoy = {
           Jessami: { total: 0, done: 0, excused: 0 },
           Kohima: { total: 0, done: 0, excused: 0 },
-          Naushera: { total: 0, done: 0, excused: 0 }
+          Naushera: { total: 0, done: 0, excused: 0 },
+          'No company': { total: 0, done: 0, excused: 0 }
         };
         let total = 0, totalDone = 0, totalExcused = 0;
         const rankCounts = {};
@@ -2189,7 +2229,7 @@
         cadets.forEach(c => {
           if (!cadetInEvent(c, ev)) return; // Skip cadets outside the task's company / years
           const status = this.cadetStatus(c.id, ev);
-          const coyKey = statsByCoy[c.company] ? c.company : 'Jessami';
+          const coyKey = statsByCoy[c.company] ? c.company : NO_COMPANY;
           if (status === 'excused') { totalExcused++; statsByCoy[coyKey].excused++; return; }
           total++;
           statsByCoy[coyKey].total++;
@@ -2274,7 +2314,9 @@
               ? 'bg-amber-900/40 text-amber-400 border-amber-700/50'
               : item.company === 'Kohima'
               ? 'bg-indigo-900/40 text-indigo-400 border-indigo-700/50'
-              : 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
+              : item.company === 'Naushera'
+              ? 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50'
+              : 'bg-slate-800 text-slate-300 border-slate-600';
 
             const wingBadge = item.wing === 'SD'
               ? 'bg-sky-900/40 text-sky-400 border-sky-700/50'
@@ -2348,14 +2390,92 @@
         const g = ev.groupDone || {};
         const late = g.done && ev.deadline && g.completedAt > ev.deadline;
         host.classList.remove('hidden');
+        const evId = escapeHtml(ev.id);
+        const updates = groupUpdates(ev);
         host.innerHTML = `
-          <div class="min-w-0">
-            <p class="text-[10px] font-black uppercase tracking-[.18em] text-sky-300">Group task</p>
-            <p class="text-sm text-slate-300 mt-1">Done once by the ${n} cadet${n === 1 ? '' : 's'} below together, so there is one mark for everyone.</p>
-            ${g.done ? `<p class="text-xs mt-1 ${late ? 'text-rose-300' : 'text-emerald-300'}">Done ${escapeHtml(this.formatDate(g.completedAt))}${g.by ? ` · marked by ${escapeHtml(g.by)}` : ''}${late ? ' · after the deadline' : ''}</p>` : ''}
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[10px] font-black uppercase tracking-[.18em] text-sky-300">Group task</p>
+              <p class="text-sm text-slate-300 mt-1">Done once by the ${n} cadet${n === 1 ? '' : 's'} below together, so there is one mark for everyone.</p>
+              ${g.done ? `<p class="text-xs mt-1 ${late ? 'text-rose-300' : 'text-emerald-300'}">Done ${escapeHtml(this.formatDate(g.completedAt))}${g.by ? ` · marked by ${escapeHtml(g.by)}` : ''}${late ? ' · after the deadline' : ''}</p>` : ''}
+            </div>
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+              <button type="button" onclick="app.openGroupUpdate('${evId}')" class="px-4 py-2.5 rounded-xl text-sm font-bold border bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700">Post update</button>
+              <button type="button" onclick="app.setGroupDone('${evId}', ${!g.done})" class="px-4 py-2.5 rounded-xl text-sm font-bold border ${g.done ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'}">${g.done ? 'Mark not done' : 'Mark group done'}</button>
+              <span class="viewer-only text-sm font-bold ${g.done ? 'text-emerald-300' : 'text-slate-400'}">${g.done ? 'Done' : 'Pending'}</span>
+            </div>
           </div>
-          <button type="button" onclick="app.setGroupDone('${escapeHtml(ev.id)}', ${!g.done})" class="shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold border ${g.done ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'}">${g.done ? 'Mark not done' : 'Mark group done'}</button>
-          <span class="viewer-only shrink-0 text-sm font-bold ${g.done ? 'text-emerald-300' : 'text-slate-400'}">${g.done ? 'Done' : 'Pending'}</span>`;
+          ${this.groupProgressHtml(updates, !!g.done, evId, '', '')}`;
+      }
+
+      /** Progress bar, latest status and the list of updates for a group task (or one team on it). */
+      /** The updates posted on a group task (or one team on it), newest first. */
+      groupProgressHtml(updates, done, evId, taskId) {
+        if (!updates.length) return '';
+        const item = u => `<li class="flex items-start justify-between gap-2 py-2 border-t border-slate-800/70">
+            <div class="min-w-0">
+              <p class="text-[11px] text-slate-500">${u.issue ? '<span class="px-1.5 py-0.5 mr-1 rounded text-[10px] font-bold bg-rose-950/50 border border-rose-800/60 text-rose-300">Issue</span>' : ''}${escapeHtml(this.formatDate(u.at))}${u.by ? ' · ' + escapeHtml(u.by) : ''}</p>
+              ${u.text ? `<p class="text-sm text-slate-200 mt-0.5 whitespace-pre-wrap break-words">${escapeHtml(u.text)}</p>` : ''}
+            </div>
+            <button type="button" onclick="app.deleteGroupUpdate('${evId}', '${taskId}', '${escapeHtml(u.id)}')" class="shrink-0 text-[11px] text-slate-500 hover:text-rose-300 px-1" aria-label="Delete update">Delete</button>
+          </li>`;
+        return `<div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Updates</p>
+            <ul class="mt-1">${updates.slice(0, 3).map(item).join('')}</ul>
+            ${updates.length > 3 ? `<details class="text-xs"><summary class="cursor-pointer text-slate-400 hover:text-slate-200 py-1">Older updates (${updates.length - 3})</summary><ul>${updates.slice(3).map(item).join('')}</ul></details>` : ''}
+          </div>`;
+      }
+
+      /** Post a progress update / comment on a group task (taskId + teamId for a team on a special-event task). */
+      openGroupUpdate(eventId, taskId, teamId) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can post updates.'); return; }
+        const ev = this.findEvent(eventId);
+        if (!ev) return;
+        const task = taskId ? specialTasks(ev).find(t => t.id === taskId) : null;
+        const host = taskId ? task : ev;
+        if (!host || !isGroupTask(host)) return;
+        const team = teamId ? (ev.teams || []).find(t => t.id === teamId) : null;
+        if (teamId && !team) return;
+        this.updateDraft = { eventId: ev.id, taskId: task?.id || null, teamId: team?.id || null };
+        document.getElementById('groupUpdateFor').textContent = task ? `${task.title} · ${team.name}` : ev.title;
+        document.getElementById('groupUpdateIssue').checked = false;
+        document.getElementById('groupUpdateText').value = '';
+        document.getElementById('groupUpdateError').classList.add('hidden');
+        document.getElementById('groupUpdateModal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('groupUpdateText')?.focus(), 50);
+      }
+
+      saveGroupUpdate() {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can post updates.'); return; }
+        const d = this.updateDraft; if (!d) return;
+        const errBox = document.getElementById('groupUpdateError');
+        const ev = this.state.events.find(e => e.id === d.eventId);
+        const host = d.taskId ? specialTasks(ev).find(t => t.id === d.taskId) : ev;
+        if (!ev || !host) { errBox.textContent = 'This task no longer exists.'; errBox.classList.remove('hidden'); return; }
+        const text = document.getElementById('groupUpdateText').value.trim();
+        const issue = document.getElementById('groupUpdateIssue').checked;
+        if (!text) { errBox.textContent = 'Write the update first.'; errBox.classList.remove('hidden'); document.getElementById('groupUpdateText').focus(); return; }
+        if (!Array.isArray(host.updates)) host.updates = [];
+        host.updates.unshift({ id: `upd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, at: Date.now(), by: this.authorName(), text, ...(issue ? { issue: true } : {}), ...(d.teamId ? { teamId: d.teamId } : {}) });
+        const team = d.teamId ? (ev.teams || []).find(t => t.id === d.teamId) : null;
+        this.logHistory('group-update', null, `Update on ${ev.title}${d.taskId ? ' – ' + host.title : ''}${team ? ' (' + team.name + ')' : ''}${issue ? ' [issue]' : ''}: ${text}`, ev.id);
+        this.updateDraft = null;
+        this.closeModal('groupUpdateModal');
+        this.saveStorage();
+        this.renderAll();
+        this.showToast('Update posted.');
+      }
+
+      deleteGroupUpdate(eventId, taskId, updateId) {
+        if (!this.canEdit()) return;
+        const ev = this.findEvent(eventId);
+        const host = taskId ? specialTasks(ev).find(t => t.id === taskId) : ev;
+        if (!host || !Array.isArray(host.updates)) return;
+        if (!confirm('Delete this update?')) return;
+        host.updates = host.updates.filter(u => u.id !== updateId);
+        this.logHistory('group-update-deleted', null, `Deleted an update on ${ev.title}${taskId ? ' – ' + host.title : ''}`, ev.id);
+        this.saveStorage();
+        this.renderAll();
       }
 
       handleSearch(val) {
@@ -2397,7 +2517,7 @@
 
       setCompanyFilter(coy, render = true) {
         this.state.filters.company = coy;
-        ['all', 'Jessami', 'Kohima', 'Naushera'].forEach(c => {
+        ['all', ...COMPANY_CHOICES].forEach(c => {
           const btn = document.getElementById(`coyBtn-${c}`);
           if (btn) {
             if (c === coy) {
@@ -2651,7 +2771,7 @@
       copyWhatsAppAll() {
         const ev = this.eventForAction();
         if (!ev) return;
-        const order = { Jessami: 0, Kohima: 1, Naushera: 2 };
+        const order = COMPANY_ORDER;
         const cadets = this.eventCadets(ev).slice().sort((a, b) => (order[a.company] ?? 3) - (order[b.company] ?? 3));
         const { message, pending, excused } = this.buildPendingMessage(cadets, ev);
         if (!pending && !excused) { this.showToast('All cadets have completed this requirement!'); return; }
@@ -2794,7 +2914,7 @@
             <td class="p-1.5"><input type="text" value="${this.escape(c.name)}" onchange="app.rosterEdit('${c.id}', 'name', this.value, this)" onkeydown="if(event.key==='Enter'){this.blur()}" class="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded-md text-xs font-semibold text-white focus:outline-none focus:border-amber-500" aria-label="Name"></td>
             <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'wing', this.value, this)" class="${sel} ${c.wing === 'SD' ? 'text-sky-400' : 'text-rose-400'}" aria-label="Wing">${opt('SD', c.wing)}${opt('SW', c.wing)}</select></td>
             <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'year', this.value, this)" class="${sel} ${YEARS.includes(c.year) ? 'text-violet-300' : 'text-amber-400 border-amber-700/60'}" aria-label="Year">${opt('', YEARS.includes(c.year) ? c.year : '', 'Not set')}${YEARS.map(y => opt(y, c.year)).join('')}</select></td>
-            <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'company', this.value, this)" class="${sel} text-slate-300" aria-label="Company">${['Jessami', 'Kohima', 'Naushera'].map(x => opt(x, c.company)).join('')}</select></td>
+            <td class="p-1.5"><select onchange="app.rosterEdit('${c.id}', 'company', this.value, this)" class="${sel} text-slate-300" aria-label="Company">${COMPANY_CHOICES.map(x => opt(x, c.company)).join('')}</select></td>
             <td class="p-1.5"><button type="button" onclick="app.rosterEdit('${c.id}', 'cycle', '${yes ? 'no' : 'yes'}', this)" aria-pressed="${yes}" title="Click to change" class="w-full px-2 py-1 rounded-md border text-xs font-bold ${yes ? 'bg-teal-900/40 border-teal-700/60 text-teal-300' : 'bg-slate-900 border-slate-700 text-slate-500'}">${yes ? 'Yes' : 'No'}</button></td>
             <td class="p-1.5 text-center"><button type="button" onclick="app.removeCadet('${c.id}')" class="text-slate-500 hover:text-rose-500 p-1" title="Remove ${this.escape(c.name)}" aria-label="Remove ${this.escape(c.name)}">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -2812,7 +2932,7 @@
         const n = f => cadets.filter(f).length;
         document.getElementById('modalRosterCountBadge').textContent = `${cadets.length} Cadets`;
         document.getElementById('rosterSummary').textContent =
-          `Jessami ${n(c => c.company === 'Jessami')} · Kohima ${n(c => c.company === 'Kohima')} · Naushera ${n(c => c.company === 'Naushera')}` +
+          `Jessami ${n(c => c.company === 'Jessami')} · Kohima ${n(c => c.company === 'Kohima')} · Naushera ${n(c => c.company === 'Naushera')}${n(c => c.company === NO_COMPANY) ? ` · No company ${n(c => c.company === NO_COMPANY)}` : ''}` +
           ` | 1st ${n(c => c.year === '1st')} · 2nd ${n(c => c.year === '2nd')} · 3rd ${n(c => c.year === '3rd')} · year not set ${n(c => !YEARS.includes(c.year))}` +
           ` | ${n(c => cycleState(c) === 'yes')} with a cycle`;
       }
@@ -2832,6 +2952,13 @@
         if (field === 'cycle') v = v === 'yes' ? 'yes' : 'no';
         if ((cadet[field] || '') === v) return;
         cadet[field] = v;
+        // CSM and CQMS sit outside the companies.
+        if (field === 'rank' && ['CSM', 'CQMS'].includes(v) && COMPANIES.includes(cadet.company)) {
+          cadet.company = NO_COMPANY;
+          const coySel = el?.closest('tr')?.querySelector('select[aria-label="Company"]');
+          if (coySel) coySel.value = NO_COMPANY;
+          this.showToast(`${cadet.name} is now ${v}, listed under “No company”. Change it back if needed.`);
+        }
         this.saveStorage();
         // Restyle in place (no full redraw).
         if (el) {
@@ -2903,7 +3030,7 @@
         const opts = {
           year: [['1st', '1st year'], ['2nd', '2nd year'], ['3rd', '3rd year'], ['', 'Not set']],
           cycle: [['yes', 'Has cycle'], ['no', 'No cycle']],
-          company: [['Jessami', 'Jessami'], ['Kohima', 'Kohima'], ['Naushera', 'Naushera']],
+          company: COMPANY_CHOICES.map(c => [c, c]),
           wing: [['SD', 'SD'], ['SW', 'SW']],
           rank: RANKS.map(r => [r, r])
         }[field];
@@ -3000,7 +3127,7 @@
           if (RANKS.includes(r)) out.rank = r; else { errors.push(`unknown rank “${out.rank}”`); delete out.rank; }
         }
         if (wing) { const w = wing.toUpperCase(); if (w === 'SD' || w === 'SW') out.wing = w; else errors.push(`wing must be SD or SW, not “${wing}”`); }
-        if (coy) { const c = ['Jessami', 'Kohima', 'Naushera'].find(x => x.toLowerCase() === coy.toLowerCase()); if (c) out.company = c; else errors.push(`unknown company “${coy}”`); }
+        if (coy) { const c = /^(no company|none|nil|-|bn|battalion|hq)$/i.test(coy) ? NO_COMPANY : COMPANIES.find(x => x.toLowerCase() === coy.toLowerCase()); if (c) out.company = c; else errors.push(`unknown company “${coy}”`); }
         if (year) { const y = parseYear(year); if (y) out.year = y; else errors.push(`year must be 1/2/3, not “${year}”`); }
         out.name = (out.name || '').replace(/\s+/g, ' ').trim();
         if (!out.name) errors.push('name is missing');
@@ -3412,7 +3539,7 @@
             </div>
           </div>`;
 
-        const coyBadge = coy => coy === 'Jessami' ? 'bg-amber-900/40 text-amber-400 border-amber-700/50' : coy === 'Kohima' ? 'bg-indigo-900/40 text-indigo-400 border-indigo-700/50' : 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50';
+        const coyBadge = coy => coy === 'Jessami' ? 'bg-amber-900/40 text-amber-400 border-amber-700/50' : coy === 'Kohima' ? 'bg-indigo-900/40 text-indigo-400 border-indigo-700/50' : coy === 'Naushera' ? 'bg-emerald-900/40 text-emerald-400 border-emerald-700/50' : 'bg-slate-800 text-slate-300 border-slate-600';
         const nameBits = c => `
                   <span class="px-1.5 py-0.5 rounded text-[10px] border font-mono font-bold ${(RANK_CONFIG[c.rank] || RANK_CONFIG.CDT).badgeClass}">${esc(c.rank || 'CDT')}</span>
                   <span class="text-sm font-semibold text-white truncate">${esc(c.name)}</span>
@@ -3477,6 +3604,10 @@
                     ${members.length ? `<button type="button" onclick="app.setTeamDone('${esc(team.id)}', ${!tComplete}, '${evId}', '${tid}')" class="px-2 py-1 text-[11px] font-bold rounded-lg border ${tComplete ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-emerald-900/30 border-emerald-700/50 text-emerald-300'}">${groupMode ? (tComplete ? 'Not done' : 'Team done') : (tComplete ? 'Clear' : 'All done')}</button>` : ''}
                   </span>
                 </div>
+                ${groupMode ? `<div class="px-3 pb-2 border-t border-slate-800/70 pt-2">
+                  ${this.groupProgressHtml(groupUpdates(task, team.id), tComplete, evId, tid, esc(team.id))}
+                  <button type="button" onclick="app.openGroupUpdate('${evId}', '${tid}', '${esc(team.id)}')" class="mt-2 px-2.5 py-1 text-[11px] font-bold rounded-lg border bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700">Post update</button>
+                </div>` : ''}
                 ${rows || `<p class="px-3 py-2 border-t border-slate-800/70 text-xs text-slate-500">${!this.teamMembers(team).length ? 'No cadets in this team.' : !members.length ? 'Everyone in this team has a reason.' : `No ${yearF === 'none' ? 'cadets without a year' : yearF + ' year cadets'} in this team.`}</p>`}
               </div>`;
           }).join('');
@@ -4393,6 +4524,10 @@
       if (isGroupTask(task)) { const team = specialTeamOf(ev, cadetId); return groupMark(team && task.teamDone && task.teamDone[team.id]); }
       return (task.records && task.records[cadetId]) || EMPTY_RECORD;
     }
+    /** Progress updates on a group task (newest first). For special-event tasks each team has its own. */
+    function groupUpdates(host, teamId) {
+      return (Array.isArray(host?.updates) ? host.updates : []).filter(u => u && u.id && (teamId ? u.teamId === teamId : !u.teamId)).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+    }
     function taskHasMarks(task) {
       return Object.values(task.records || {}).some(r => recordStatus(r) !== 'pending') || Object.values(task.teamDone || {}).some(g => g && g.done);
     }
@@ -4451,7 +4586,7 @@
           name: String(c.name ?? '').trim() || 'Unnamed cadet',
           rank: RANKS.includes(String(c.rank || '').toUpperCase()) ? String(c.rank).toUpperCase() : 'CDT',
           wing: c.wing === 'SW' ? 'SW' : 'SD',
-          company: ['Jessami', 'Kohima', 'Naushera'].includes(c.company) ? c.company : (c.company ? String(c.company) : 'Jessami') };
+          company: COMPANY_CHOICES.includes(c.company) ? c.company : (c.company ? String(c.company) : 'Jessami') };
       });
     }
     function normalizeEvent(ev) {
@@ -4466,6 +4601,7 @@
       });
       // Years the task is limited to; left out entirely when it is for every year (keeps old data unchanged).
       if (ev.completion !== undefined && ev.completion !== 'group') delete ev.completion;
+      if (ev.updates !== undefined) { ev.updates = Array.isArray(ev.updates) ? ev.updates.filter(u => u && u.id) : []; if (!ev.updates.length) delete ev.updates; }
       if (ev.type !== 'special' && ev.cadetIds !== undefined) {
         const ids = [...new Set((Array.isArray(ev.cadetIds) ? ev.cadetIds : []).filter(id => id != null).map(String))];
         if (ids.length) ev.cadetIds = ids; else delete ev.cadetIds;
@@ -4609,16 +4745,16 @@
         chip('SD', count(list, c => c.wing === 'SD'), 'border-sky-700/50 text-sky-300') +
         chip('SW', count(list, c => c.wing === 'SW'), 'border-rose-700/50 text-rose-300');
 
-      const tones = { Jessami: 'text-amber-400 border-amber-700/50', Kohima: 'text-indigo-400 border-indigo-700/50', Naushera: 'text-emerald-400 border-emerald-700/50' };
-      const companies = ['Jessami', 'Kohima', 'Naushera'].filter(c => coy === 'all' || c === coy);
+      const tones = { Jessami: 'text-amber-400 border-amber-700/50', Kohima: 'text-indigo-400 border-indigo-700/50', Naushera: 'text-emerald-400 border-emerald-700/50', 'No company': 'text-slate-200 border-slate-700' };
+      const companies = COMPANY_CHOICES.filter(c => (coy === 'all' || c === coy) && (c !== NO_COMPANY || coy === c || cadets.some(x => x.company === c)));
       host.className = `grid gap-4 ${companies.length > 1 ? 'lg:grid-cols-3' : ''}`;
       if (!cadets.length) { host.innerHTML = '<div class="border border-slate-800 bg-slate-900 rounded-2xl p-6 text-sm text-slate-400">The roster is loading or empty.</div>'; return; }
       host.innerHTML = companies.map(company => {
         const people = list.filter(c => c.company === company);
         const total = count(cadets, c => c.company === company);
-        return `<section class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden" aria-label="${company} Company">
+        return `<section class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden ${company === NO_COMPANY && companies.length > 1 ? 'lg:col-span-3' : ''}" aria-label="${company === NO_COMPANY ? 'No company (CSM, CQMS)' : company + ' Company'}">
           <header class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
-            <h3 class="font-extrabold ${tones[company].split(' ')[0]}">${company}</h3>
+            <h3 class="font-extrabold ${tones[company].split(' ')[0]}">${company === NO_COMPANY ? 'No company <span class="text-xs font-semibold text-slate-500">CSM, CQMS</span>' : company}</h3>
             <span class="text-xs text-slate-400 font-mono-num">${people.length}${people.length !== total ? ` of ${total}` : ''} cadet${total === 1 ? '' : 's'}</span>
           </header>
           ${people.length ? `<ul class="divide-y divide-slate-800/60">${people.map(c => `
@@ -4702,7 +4838,7 @@
       const { slot } = currentSlot();
       const { counts } = callCounts();
       const list = availCadets().filter(c => passesAvailFilters(c) && getCadetAvailability(c).includes(slot));
-      const order = { Jessami: 0, Kohima: 1, Naushera: 2 };
+      const order = COMPANY_ORDER;
       list.sort((a, b) => {
         if (AVAIL.sort === 'fewest') return (counts[a.id] || 0) - (counts[b.id] || 0) || a.name.localeCompare(b.name);
         if (AVAIL.sort === 'company') return (order[a.company] ?? 3) - (order[b.company] ?? 3) || a.name.localeCompare(b.name);
@@ -4888,11 +5024,9 @@
       const page = document.getElementById('uniformPage');
       renderUniformHomeStat();
       if (!page || page.classList.contains('hidden') || typeof app === 'undefined' || !app || !app.state) return;
-      const signedIn = !!app.user;
-      document.getElementById('uniformLocked').classList.toggle('hidden', signedIn);
-      document.getElementById('uniformContent').classList.toggle('hidden', !signedIn);
-      document.getElementById('uniformViewOnly').classList.toggle('hidden', !signedIn || app.canEdit());
-      if (!signedIn) return;
+      // Anyone can see the requests; only verified seniors (approved editors) can add or change them.
+      document.getElementById('uniformContent').classList.remove('hidden');
+      document.getElementById('uniformViewOnly').classList.toggle('hidden', app.canEdit());
       if (app.canEdit()) { renderUniformPicker(); renderUniformItemChips(); }
       renderUniformSummary();
       renderUniformList();
