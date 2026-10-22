@@ -100,6 +100,11 @@
     .cf-page-tab[aria-selected="true"]::after { transform: scaleX(1); }
 
     /* Filter chips */
+    #uniPickList, #newPickList, #editPickList { max-height: 15rem; overflow-y: auto; }
+    .cf-seg { color: var(--muted); font-weight: 550; transition: background-color .2s var(--snap), color .2s var(--snap); }
+    .cf-seg:hover { color: var(--ink); }
+    .cf-seg:has(input:checked) { background: var(--brass); color: var(--navy); font-weight: 650; }
+    .cf-seg:has(input:focus-visible) { outline: 2px solid var(--sky); outline-offset: 1px; }
     .cf-who { color: var(--muted); font-weight: 550; transition: background-color .2s var(--snap), color .2s var(--snap); }
     .cf-who:hover { color: var(--ink); }
     .cf-who[aria-checked="true"] { background: var(--brass); color: var(--navy); font-weight: 650; }
@@ -151,7 +156,7 @@
     /* ---------- Phone layout (<=640px): bottom tab bar, sheet dialogs, card rows ---------- */
     #phoneNav { display: none; }
     @media (max-width: 640px) {
-      #phoneNav { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      #phoneNav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
         padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); background: rgba(12,22,38,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
       #phoneNav button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 2px 5px; font-size: 11px; font-weight: 550; color: var(--muted); border-radius: 10px; }
       #phoneNav button svg { width: 22px; height: 22px; transition: transform .3s var(--spring); }
@@ -266,11 +271,13 @@
     body:not(.can-edit) button[onclick*="unarchiveTaskById"],
     body:not(.can-edit) button[onclick*="openSpecialEventModal"],
     body:not(.can-edit) button[onclick*="setTeamDone"],
+    body:not(.can-edit) button[onclick*="setGroupDone"],
     body:not(.can-edit) button[onclick*="openSpecialTaskModal"],
     body:not(.can-edit) button[onclick*="deleteSpecialTask"],
     body:not(.can-edit) button[onclick*="recordCallOut"],
     body:not(.can-edit) button[onclick*="deleteCallOut"],
-    body:not(.can-edit) #restoreFileInput { display: none !important; }
+    body:not(.can-edit) #restoreFileInput,
+    body:not(.can-edit) .uni-edit { display: none !important; }
     /* Read-only status badges shown to visitors in place of editor toggles. */
     body.can-edit .viewer-only { display: none !important; }
   </style>
@@ -352,6 +359,11 @@
           <span class="tool-desc">Every cadet by company, year and wing. Open to anyone, no sign-in needed.</span>
           <span class="tool-stat" id="homeStatRoster"><b>–</b><small>cadets</small></span>
         </button>
+        <button type="button" class="tool-row" style="--i:3" onclick="switchCadetFlowPage('uniform')" aria-label="Open Uniform requests">
+          <span class="tool-name">Uniform</span>
+          <span class="tool-desc">Request berets, badges, belts and more for cadets. CQMS orders, records the amount, then marks them received. Sign-in needed.</span>
+          <span class="tool-stat" id="homeStatUniform"><b>–</b><small>to order</small></span>
+        </button>
       </nav>
       <div class="home-foot"><span>National Cadet Corps</span><span id="homeCadetCount">37 active cadets</span></div>
     </section>
@@ -360,6 +372,7 @@
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="rosterTab" aria-selected="true" onclick="switchCadetFlowPage('roster')">Task Master</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="availabilityTab" aria-selected="false" onclick="switchCadetFlowPage('availability')">Cadet Availability</button>
       <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="directoryTab" aria-selected="false" onclick="switchCadetFlowPage('directory')">Cadet Roster</button>
+      <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="uniformTab" aria-selected="false" onclick="switchCadetFlowPage('uniform')">Uniform</button>
       <div id="memoryMenu" class="relative ml-auto">
         <button type="button" class="cf-page-tab px-4 py-2 border text-sm font-bold" id="memoryTab" aria-haspopup="true" aria-expanded="false" onclick="toggleMemoryMenu()">Data ▾</button>
         <div id="memoryDropdown" class="hidden absolute right-0 top-full mt-1 min-w-44 border border-slate-700 bg-slate-900 shadow-xl z-40">
@@ -695,7 +708,7 @@
         </div>
 
         <!-- Bulk Mark on Visible Cadets -->
-        <div class="flex items-center gap-2">
+        <div id="bulkMarkBar" class="flex items-center gap-2">
           <button onclick="app.bulkToggleVisible(true)" class="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-900/30 hover:bg-emerald-800/40 px-2.5 py-1 rounded-lg border border-emerald-700/50 transition-colors">
             Mark Filtered Done
           </button>
@@ -706,6 +719,9 @@
       </div>
 
     </div>
+
+    <!-- Group task: one mark for everyone listed -->
+    <div id="groupTaskCard" class="hidden bg-slate-900 rounded-2xl border border-sky-700/40 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"></div>
 
     <!-- Cadets List Card -->
     <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
@@ -744,6 +760,95 @@
       </div><!-- /taskWorkspace -->
     </div><!-- /rosterPage -->
 
+    <section id="uniformPage" class="hidden space-y-4" aria-labelledby="uniformHeading">
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-6">
+        <p class="text-[10px] uppercase tracking-[.18em] font-black text-amber-400">CQMS</p>
+        <h2 id="uniformHeading" class="text-xl sm:text-2xl font-black text-white mt-1">Uniform requests</h2>
+        <p class="text-sm text-slate-400 mt-1">Request uniform items for cadets. CQMS sees who needs what, marks items ordered with the amount, then received when they arrive.</p>
+        <div id="uniformLocked" class="hidden mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm text-slate-300">Sign in to see and make uniform requests.</p>
+          <button type="button" onclick="app.openAuthModal()" class="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl">Sign in</button>
+        </div>
+        <p id="uniformViewOnly" class="hidden mt-3 text-xs text-amber-300">You are signed in with view-only access. Ask the CadetFlow administrator for editor access to make or update requests.</p>
+      </div>
+
+      <div id="uniformContent" class="hidden space-y-4">
+        <div class="uni-edit bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5 space-y-3" aria-labelledby="uniNewHeading">
+          <h3 id="uniNewHeading" class="font-extrabold text-white">New request</h3>
+          <div class="grid lg:grid-cols-2 gap-5">
+            <div class="space-y-2 min-w-0">
+              <div class="flex items-center justify-between gap-2"><span class="text-xs font-bold text-slate-300">1 · Cadets</span><span id="uniPickCount" class="text-[11px] font-bold text-slate-500">No cadet picked</span></div>
+              <div class="flex flex-wrap gap-2">
+                <input type="search" id="uniPickSearch" oninput="renderUniformPicker()" placeholder="Search name…" autocomplete="off" class="flex-1 min-w-[130px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-amber-500">
+                <select id="uniPickCoy" onchange="renderUniformPicker()" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+                <select id="uniPickYear" onchange="renderUniformPicker()" aria-label="Year" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All years</option><option value="1st">1st year</option><option value="2nd">2nd year</option><option value="3rd">3rd year</option><option value="none">Year not set</option></select>
+              </div>
+              <div id="uniPickList" class="max-h-60 overflow-y-auto border border-slate-700 rounded-xl bg-slate-950 divide-y divide-slate-800"></div>
+            </div>
+            <div class="space-y-3 min-w-0">
+              <span class="block text-xs font-bold text-slate-300">2 · What they need <span class="font-normal text-slate-500">(tick one or more)</span></span>
+              <div id="uniItemChips" class="flex flex-wrap gap-1.5" role="group" aria-label="Items"></div>
+              <input type="text" id="uniCustom" maxlength="60" placeholder="What is it? e.g. Cap badge, whistle cord" class="hidden w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+              <div class="grid grid-cols-[84px_1fr] gap-2">
+                <label class="text-[11px] font-bold text-slate-400">Quantity
+                  <input type="number" id="uniQty" min="1" max="20" value="1" inputmode="numeric" class="mt-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                </label>
+                <label class="text-[11px] font-bold text-slate-400">Size / note <span class="font-normal">(optional)</span>
+                  <input type="text" id="uniNote" maxlength="80" placeholder="e.g. Beret 57 cm, belt 34" class="mt-1 w-full px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-sm focus:outline-none focus:border-amber-500">
+                </label>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p id="uniNewSummary" class="text-[11px] text-slate-500"></p>
+                <button type="button" onclick="createUniformRequests()" class="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl">Add request</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5" aria-labelledby="uniNeedHeading">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 id="uniNeedHeading" class="font-extrabold text-white">What's needed</h3>
+              <p class="text-xs text-slate-500 mt-0.5">Items requested and not yet ordered, by item. Tap one to see who needs it.</p>
+            </div>
+            <button type="button" onclick="copyUniformOrderList()" class="px-3 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">Copy order list (WhatsApp)</button>
+          </div>
+          <div id="uniSummary" class="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2"></div>
+          <div id="uniMoney" class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-400"></div>
+        </div>
+
+        <div class="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5 space-y-3" aria-labelledby="uniListHeading">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 id="uniListHeading" class="font-extrabold text-white">Requests <span id="uniCount" class="text-sm font-semibold text-slate-500 font-mono-num"></span></h3>
+            <button type="button" onclick="uniformTickAll()" class="uni-edit text-[11px] font-semibold text-slate-400 hover:text-slate-200 underline underline-offset-2">Tick / untick shown</button>
+          </div>
+          <div id="uniFilters" class="space-y-2">
+            <div class="flex flex-wrap gap-1.5" role="group" aria-label="Status">
+              <button type="button" data-uf="status" data-val="open" onclick="setUniformFilter('status', 'open')" class="af-chip text-xs">Not received</button>
+              <button type="button" data-uf="status" data-val="requested" onclick="setUniformFilter('status', 'requested')" class="af-chip text-xs">Requested</button>
+              <button type="button" data-uf="status" data-val="ordered" onclick="setUniformFilter('status', 'ordered')" class="af-chip text-xs">Ordered</button>
+              <button type="button" data-uf="status" data-val="received" onclick="setUniformFilter('status', 'received')" class="af-chip text-xs">Received</button>
+              <button type="button" data-uf="status" data-val="unpaid" onclick="setUniformFilter('status', 'unpaid')" class="af-chip text-xs">Not paid</button>
+              <button type="button" data-uf="status" data-val="all" onclick="setUniformFilter('status', 'all')" class="af-chip text-xs">All</button>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <input type="search" id="uniSearch" oninput="setUniformFilter('q', this.value)" placeholder="Search cadet…" autocomplete="off" class="flex-1 min-w-[130px] px-3 py-2 bg-slate-950 border border-slate-700 text-white placeholder-slate-600 rounded-xl text-xs focus:outline-none focus:border-amber-500">
+              <select id="uniItemFilter" onchange="setUniformFilter('item', this.value)" aria-label="Item" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"></select>
+              <select id="uniCoyFilter" onchange="setUniformFilter('company', this.value)" aria-label="Company" class="px-2 py-2 bg-slate-950 border border-slate-700 text-white rounded-xl text-xs"><option value="all">All companies</option><option>Jessami</option><option>Kohima</option><option>Naushera</option></select>
+            </div>
+          </div>
+          <div id="uniBulk" class="uni-edit hidden flex flex-wrap items-center gap-2 bg-slate-950 border border-amber-700/40 rounded-xl p-2 text-xs">
+            <span class="text-slate-300"><b id="uniBulkCount" class="font-mono-num">0</b> ticked</span>
+            <button type="button" onclick="uniformBulk('ordered')" class="px-3 py-1.5 font-bold bg-sky-900/40 border border-sky-700/60 text-sky-200 rounded-lg">Mark ordered</button>
+            <button type="button" onclick="uniformBulk('received')" class="px-3 py-1.5 font-bold bg-emerald-900/40 border border-emerald-700/60 text-emerald-200 rounded-lg">Mark received</button>
+            <button type="button" onclick="uniformBulk('paid')" class="px-3 py-1.5 font-bold bg-slate-800 border border-slate-700 text-slate-200 rounded-lg">Mark paid</button>
+            <button type="button" onclick="uniformBulk('delete')" class="px-3 py-1.5 font-bold border border-rose-900/60 text-rose-300 rounded-lg">Delete</button>
+            <button type="button" onclick="uniformClearTicks()" class="ml-auto text-[11px] text-slate-400 underline underline-offset-2">Clear</button>
+          </div>
+          <div id="uniList" class="border border-slate-800 rounded-xl divide-y divide-slate-800 overflow-hidden"></div>
+        </div>
+      </div>
+    </section>
     <section id="directoryPage" class="hidden space-y-4" aria-labelledby="directoryHeading">
       <div class="bg-slate-900 rounded-2xl border border-slate-800 p-5 sm:p-6 shadow-lg space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -838,6 +943,7 @@
     <button type="button" data-page="home" aria-current="page" onclick="switchCadetFlowPage('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
     <button type="button" data-page="roster" onclick="switchCadetFlowPage('roster')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></svg>Tasks</button>
     <button type="button" data-page="availability" onclick="switchCadetFlowPage('availability')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Availability</button>
+    <button type="button" data-page="uniform" onclick="switchCadetFlowPage('uniform')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3l-5 3 2 5 3-1v11h8V10l3 1 2-5-5-3c-.5 1.7-2 3-4 3s-3.5-1.3-4-3z"/></svg>Uniform</button>
     <button type="button" data-page="directory" onclick="switchCadetFlowPage('directory')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14a6 6 0 013.5 6"/></svg>Roster</button>
   </nav>
 
@@ -1023,6 +1129,14 @@
           </div>
           <div id="newPickList" class="max-h-56 overflow-y-auto border border-slate-700 rounded-xl bg-slate-950 divide-y divide-slate-800"></div>
         </div>
+        <div>
+          <span class="block text-xs font-bold text-slate-300 mb-1">How is it done?</span>
+          <div class="grid grid-cols-2 gap-1 p-1 bg-slate-950 border border-slate-700 rounded-xl" role="radiogroup" aria-label="How is it done">
+            <label class="cf-seg px-3 py-1.5 text-xs rounded-lg text-center cursor-pointer"><input type="radio" name="newCompletion" value="each" class="sr-only" checked>Each cadet</label>
+            <label class="cf-seg px-3 py-1.5 text-xs rounded-lg text-center cursor-pointer"><input type="radio" name="newCompletion" value="group" class="sr-only">Once for the group</label>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Each cadet: everyone is marked separately (forms, fees). Once for the group: they do one thing together, one mark for all.</p>
+        </div>
         
         <!-- DEADLINE SYSTEM -->
         <div class="border border-slate-800 bg-slate-900/50 rounded-xl p-3">
@@ -1106,6 +1220,14 @@
             <span class="flex gap-3"><button type="button" onclick="app.pickAllShown('edit', true)" class="font-semibold text-slate-300 hover:text-white underline underline-offset-2">Tick shown</button><button type="button" onclick="app.pickAllShown('edit', false)" class="font-semibold text-slate-400 hover:text-white underline underline-offset-2">Untick shown</button></span>
           </div>
           <div id="editPickList" class="max-h-56 overflow-y-auto border border-slate-700 rounded-xl bg-slate-950 divide-y divide-slate-800"></div>
+        </div>
+        <div>
+          <span class="block text-xs font-bold text-slate-300 mb-1">How is it done?</span>
+          <div class="grid grid-cols-2 gap-1 p-1 bg-slate-950 border border-slate-700 rounded-xl" role="radiogroup" aria-label="How is it done">
+            <label class="cf-seg px-3 py-1.5 text-xs rounded-lg text-center cursor-pointer"><input type="radio" name="editCompletion" value="each" class="sr-only" checked>Each cadet</label>
+            <label class="cf-seg px-3 py-1.5 text-xs rounded-lg text-center cursor-pointer"><input type="radio" name="editCompletion" value="group" class="sr-only">Once for the group</label>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Each cadet: everyone is marked separately. Once for the group: one mark for all.</p>
         </div>
 
         <!-- DEADLINE SYSTEM -->
@@ -1237,6 +1359,14 @@
         <input type="datetime-local" id="specialTaskDeadline" class="hidden w-full mt-2 px-3 py-1.5 bg-slate-950 border border-slate-700 text-white rounded-lg text-xs focus:outline-none focus:border-amber-500">
         <p id="specialTaskDeadlineHint" class="text-[11px] text-slate-500 mt-1.5"></p>
       </div>
+        <div>
+          <span class="block text-xs font-bold text-slate-300 mb-1">How is it done?</span>
+          <div class="grid grid-cols-2 gap-1 p-1 bg-slate-950 border border-slate-700 rounded-xl" role="radiogroup" aria-label="How is it done">
+            <label class="cf-seg px-3 py-1.5 text-xs rounded-lg text-center cursor-pointer"><input type="radio" name="specialTaskCompletion" value="each" class="sr-only" checked>Each cadet</label>
+            <label class="cf-seg px-3 py-1.5 text-xs rounded-lg text-center cursor-pointer"><input type="radio" name="specialTaskCompletion" value="group" class="sr-only">Once per team</label>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">Each cadet: every member is marked. Once per team: the team does it together, one mark per team.</p>
+        </div>
       <fieldset class="space-y-2">
         <div class="flex items-center justify-between gap-3">
           <legend class="text-xs font-bold text-slate-300">Give it to</legend>
@@ -1388,6 +1518,7 @@
           activeEventId: null,
           history: [],
           duties: [],   // work call-outs from the Availability page: { id, at, cadetIds, work, slot, by }
+          uniform: [],  // uniform requests for CQMS: { id, cadetId, item, custom?, qty, note?, status, requestedAt, requestedBy, orderedAt?, amount?, paid?, receivedAt? }
           selectedCadets: new Set(),
           filters: {
             company: 'all',
@@ -1447,6 +1578,7 @@
             this.state.history = Array.isArray(data.history) ? data.history : [];
             this.state.duties = (Array.isArray(data.duties) ? data.duties : []).filter(d => d && d.id)
               .map(d => (d.by && String(d.by).includes('@')) ? { ...d, by: String(d.by).split('@')[0] } : d);
+            this.state.uniform = normalizeUniform(data.uniform);
             this.state.events.forEach(ev => normalizeEvent(ev));
           } else {
             this.state.cadets = [...USER_EXACT_37_CADETS];
@@ -1474,7 +1606,8 @@
           events: this.state.events.map(ev => ({ ...ev, records: compactRecords(ev.records), ...(Array.isArray(ev.tasks) ? { tasks: ev.tasks.map(t => ({ ...t, records: compactRecords(t.records) })) } : {}) })),
           activeEventId: this.state.activeEventId,
           history: this.state.history || [],
-          duties: this.state.duties || []
+          duties: this.state.duties || [],
+          uniform: this.state.uniform || []
         };
       }
 
@@ -1631,6 +1764,7 @@
         // Older call-outs stored the editor's email; keep only the name part (the shared data is public).
         this.state.duties = (Array.isArray(data.duties) ? data.duties : []).filter(d => d && d.id)
           .map(d => (d.by && String(d.by).includes('@')) ? { ...d, by: String(d.by).split('@')[0] } : d);
+        this.state.uniform = normalizeUniform(data.uniform);
         this.state.events.forEach(ev => normalizeEvent(ev));
         // Drop ticked checkboxes for cadets that no longer exist.
         const ids = new Set(this.state.cadets.map(c => c.id));
@@ -1812,6 +1946,8 @@
       applyAccessUI() {
         const approvedEditor = this.canEdit();
         document.body.classList.toggle('can-edit', approvedEditor);
+        document.body.classList.toggle('signed-in', !!this.user);
+        if (typeof renderUniformPage === 'function') renderUniformPage();
         const buttonLabel = document.getElementById('authButtonLabel');
         const accountName = document.getElementById('accountName');
         const accountRole = document.getElementById('accountRole');
@@ -1866,10 +2002,9 @@
       peekRecord(cadetId, ev = this.workspaceEvent(), taskId) {
         if (ev && ev.type === 'special') {
           if (!taskId) return specialEventRecord(ev, cadetId); // overall: built from the tasks of their team
-          const task = specialTasks(ev).find(t => t.id === taskId);
-          return (task && task.records && task.records[cadetId]) || EMPTY_RECORD;
+          return taskRecord(ev, specialTasks(ev).find(t => t.id === taskId), cadetId);
         }
-        return (ev && ev.records && ev.records[cadetId]) || EMPTY_RECORD;
+        return ev ? normalRecord(ev, cadetId) : EMPTY_RECORD;
       }
 
       /** done | excused (has a reason, not counted) | pending, for a given event. */
@@ -2024,7 +2159,14 @@
         const isSpecial = ev?.type === 'special';
         document.getElementById('standardTaskView')?.classList.toggle('hidden', isSpecial);
         document.getElementById('specialEventView')?.classList.toggle('hidden', !isSpecial);
+        if (typeof renderUniformPage === 'function') renderUniformPage();
         if (isSpecial) { this.renderSpecialEventView(ev); return; }
+        const groupMode = isGroupTask(ev);
+        this.renderGroupTaskCard(groupMode ? ev : null);
+        document.getElementById('bulkMarkBar')?.classList.toggle('hidden', groupMode);
+        // Company filter buttons count the cadets in this task (they used to be fixed numbers).
+        const inTask = ev ? this.eventCadets(ev) : [];
+        ['Jessami', 'Kohima', 'Naushera'].forEach(c => { const b = document.getElementById(`coyBtn-${c}`); if (b) b.textContent = `${c} (${inTask.filter(x => x.company === c).length})`; });
 
         if (!ev || cadets.length === 0) {
           container.innerHTML = '';
@@ -2164,6 +2306,7 @@
               </div>
 
               <!-- Center/Right Controls -->
+              ${groupMode ? `<span class="ml-8 sm:ml-0 text-xs font-bold ${item.rec.done ? 'text-emerald-300' : 'text-slate-500'}">${item.rec.done ? 'Done (group)' : 'Pending (group)'}</span>` : `
               <div class="flex items-center justify-between sm:justify-end gap-4 ml-8 sm:ml-0">
                 <!-- Reason Button -->
                 <button onclick="app.promptReason('${item.id}', '${ev.id}')" class="text-xs px-2.5 py-1.5 rounded-lg border flex-1 sm:flex-none sm:w-32 text-left sm:text-center truncate transition-colors ${
@@ -2189,11 +2332,30 @@
                     }
                   </button>
                 </div>
-              </div>
+              </div>`}
             `;
             container.appendChild(row);
           });
         }
+      }
+
+      /** The single mark of a group task, above the list of cadets doing it. */
+      renderGroupTaskCard(ev) {
+        const host = document.getElementById('groupTaskCard');
+        if (!host) return;
+        if (!ev) { host.classList.add('hidden'); host.innerHTML = ''; return; }
+        const n = this.eventCadets(ev).length;
+        const g = ev.groupDone || {};
+        const late = g.done && ev.deadline && g.completedAt > ev.deadline;
+        host.classList.remove('hidden');
+        host.innerHTML = `
+          <div class="min-w-0">
+            <p class="text-[10px] font-black uppercase tracking-[.18em] text-sky-300">Group task</p>
+            <p class="text-sm text-slate-300 mt-1">Done once by the ${n} cadet${n === 1 ? '' : 's'} below together, so there is one mark for everyone.</p>
+            ${g.done ? `<p class="text-xs mt-1 ${late ? 'text-rose-300' : 'text-emerald-300'}">Done ${escapeHtml(this.formatDate(g.completedAt))}${g.by ? ` · marked by ${escapeHtml(g.by)}` : ''}${late ? ' · after the deadline' : ''}</p>` : ''}
+          </div>
+          <button type="button" onclick="app.setGroupDone('${escapeHtml(ev.id)}', ${!g.done})" class="shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold border ${g.done ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-emerald-600 border-emerald-500 text-white hover:bg-emerald-500'}">${g.done ? 'Mark not done' : 'Mark group done'}</button>
+          <span class="viewer-only shrink-0 text-sm font-bold ${g.done ? 'text-emerald-300' : 'text-slate-400'}">${g.done ? 'Done' : 'Pending'}</span>`;
       }
 
       handleSearch(val) {
@@ -2331,6 +2493,13 @@
         if (!ev) return;
         const task = ev.type === 'special' ? this.resolveSpecialTask(ev, cadetId, taskId) : null;
         if (ev.type === 'special' && !task) return;
+        // Group tasks have one mark for the whole group (or team), not one per cadet.
+        if (ev.type !== 'special' && isGroupTask(ev)) { this.setGroupDone(ev.id, !normalRecord(ev, cadetId).done); return; }
+        if (task && isGroupTask(task)) {
+          const team = specialTeamOf(ev, cadetId);
+          if (team) this.setTeamDone(team.id, !taskRecord(ev, task, cadetId).done, ev.id, task.id);
+          return;
+        }
         const rec = this.getCadetRecord(cadetId, ev, task?.id);
         const cadet = this.state.cadets.find(c => c.id === cadetId);
         const wasDone = rec.done;
@@ -2343,6 +2512,19 @@
         this.renderAll();
       }
 
+      /** Mark a group task (one shared mark) done or not done. */
+      setGroupDone(eventId, markDone) {
+        if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change task status.'); return; }
+        const ev = this.eventForAction(eventId);
+        if (!ev || ev.type === 'special' || !isGroupTask(ev)) return;
+        if (!!ev.groupDone?.done === !!markDone) return;
+        ev.groupDone = markDone ? { done: true, completedAt: Date.now(), by: this.authorName() } : { done: false, completedAt: null };
+        this.logHistory('group-status-change', null, `${markDone ? 'Marked done' : 'Marked not done'}: ${ev.title} (group task)`, ev.id);
+        this.saveStorage();
+        this.renderAll();
+        this.showToast(markDone ? `${ev.title}: done` : `${ev.title}: marked not done`);
+      }
+
       promptReason(cadetId, eventId, taskId) {
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can add a reason.'); return; }
         const ev = this.eventForAction(eventId);
@@ -2350,6 +2532,7 @@
         if (!ev || !cadet) return;
         const task = ev.type === 'special' ? this.resolveSpecialTask(ev, cadetId, taskId) : null;
         if (ev.type === 'special' && !task) return;
+        if ((ev.type !== 'special' && isGroupTask(ev)) || (task && isGroupTask(task))) { this.showToast('This task is done once by the whole group, so it has no reasons per cadet.'); return; }
         const what = task ? `${ev.title} – ${task.title}` : ev.title;
         const currentReason = this.peekRecord(cadetId, ev, task?.id).note || '';
         const newReason = prompt(`Reason ${cadet.rank} ${cadet.name} is not taking part in “${what}”:\n(Cadets with a reason are listed separately and not counted. Leave blank to clear.)`, currentReason);
@@ -2396,6 +2579,7 @@
         if (!this.canEdit()) { this.showToast('Only approved CadetFlow editors can change bulk status.'); return; }
         const ev = this.eventForAction();
         if (!ev || ev.type === 'special') return;
+        if (isGroupTask(ev)) { this.setGroupDone(ev.id, markDone); return; }
         const now = Date.now();
         // Cadets with a reason are not part of the task list, so bulk actions skip them.
         const eligible = this.state.cadets.filter(c => {
@@ -2904,6 +3088,7 @@
         document.getElementById('newEventScopeInput').value = 'All';
         this.setYearChecks('new', []);
         this.resetTaskPicker('new', 'group', []);
+        this.setCompletion('newCompletion', 'each');
         document.getElementById('newEventTypeInput').value = 'task';
         
         document.getElementById('newEventHasDeadline').checked = false;
@@ -2936,7 +3121,8 @@
         const id = `event-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
         if (who.mode !== 'pick' && !this.confirmYearScope(scope, years)) return;
         const audience = who.mode === 'pick' ? { scope: 'All', cadetIds: who.ids } : { scope, ...(years.length ? { years } : {}) };
-        this.state.events.unshift({ id, title, description: desc, ...audience, type, deadline, archived: false, createdAt: Date.now(), records: {} });
+        const completion = this.readCompletion('newCompletion');
+        this.state.events.unshift({ id, title, description: desc, ...audience, type, ...(completion === 'group' ? { completion } : {}), deadline, archived: false, createdAt: Date.now(), records: {} });
         this.logHistory('task-created', null, `Created ${type === 'attendance' ? 'attendance event' : 'task'}: ${title}`);
         this.state.activeEventId = id;
         this.saveStorage();
@@ -2947,6 +3133,9 @@
         showTaskMasterSection('home');
         this.showToast(`Created: ${title}. It is now listed under Ongoing Tasks.`);
       }
+
+      readCompletion(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value === 'group' ? 'group' : 'each'; }
+      setCompletion(name, value) { document.querySelectorAll(`input[name="${name}"]`).forEach(i => { i.checked = i.value === (value === 'group' ? 'group' : 'each'); }); }
 
       // ---- "Who is this task for?": companies & years, or hand-picked cadets ----
       resetTaskPicker(prefix, mode, ids) {
@@ -3054,6 +3243,7 @@
         document.getElementById('editEventScopeInput').value = ev.scope || 'All';
         this.setYearChecks('edit', eventYears(ev));
         this.resetTaskPicker('edit', eventPicked(ev) ? 'pick' : 'group', eventPicked(ev) ? ev.cadetIds : []);
+        this.setCompletion('editCompletion', ev.completion);
         document.getElementById('editEventTypeInput').value = ev.type || 'task';
 
         const dlCheckbox = document.getElementById('editEventHasDeadline');
@@ -3089,6 +3279,15 @@
         if (who.mode === 'pick') {
           if (!who.ids.length) { this.showToast('Pick at least one cadet, or choose Companies & years.'); return; }
         } else if ((eventPicked(ev) || newScope !== (ev.scope || 'All') || newYears.join() !== eventYears(ev).join()) && !this.confirmYearScope(newScope, newYears)) return;
+        const completion = this.readCompletion('editCompletion');
+        const switching = completion !== (isGroupTask(ev) ? 'group' : 'each');
+        const hasMarks = Object.values(ev.records || {}).some(r => recordStatus(r) !== 'pending') || !!ev.groupDone?.done;
+        if (switching && hasMarks && !confirm(`Change how “${newTitle}” is done? Its current done marks${isGroupTask(ev) ? '' : ' and reasons'} will be cleared.`)) return;
+        if (switching) {
+          ev.records = {};
+          delete ev.groupDone;
+          if (completion === 'group') ev.completion = 'group'; else delete ev.completion;
+        }
         ev.title = newTitle;
         ev.description = document.getElementById('editEventDescInput').value.trim();
         if (who.mode === 'pick') { ev.scope = 'All'; delete ev.years; ev.cadetIds = who.ids; }
@@ -3251,13 +3450,16 @@
           const complete = active.length > 0 && done === active.length;
           const pct = active.length ? Math.round(done / active.length * 100) : 0;
           const dl = taskDeadline(ev, task);
+          const groupMode = isGroupTask(task);
+          const teamsDone = assigned.filter(t => task.teamDone?.[t.id]?.done).length;
           const groups = assigned.map(team => {
             const members = this.teamMembers(team).filter(c => st(c) !== 'excused');
             const tDone = members.filter(c => st(c) === 'done').length;
-            const tComplete = members.length > 0 && tDone === members.length;
+            const tComplete = groupMode ? !!task.teamDone?.[team.id]?.done : (members.length > 0 && tDone === members.length);
             const rows = members.filter(inYear).map(c => {
               const rec = this.peekRecord(c.id, ev, task.id);
               const late = dl && rec.completedAt && rec.completedAt > dl;
+              if (groupMode) return `<div class="flex items-center gap-1.5 flex-wrap px-3 py-1.5 border-t border-slate-800/70">${nameBits(c)}</div>`;
               return `<div class="flex items-center justify-between gap-2 px-3 py-2 border-t border-slate-800/70">
                   <div class="min-w-0 flex items-center gap-1.5 flex-wrap">${nameBits(c)}</div>
                   <div class="flex items-center gap-1.5 shrink-0">
@@ -3271,8 +3473,8 @@
                 <div class="flex items-center justify-between gap-2 px-3 py-2">
                   <span class="text-xs font-bold text-violet-300 min-w-0 truncate">${esc(teamLabel(team))}</span>
                   <span class="flex items-center gap-2 shrink-0">
-                    <span class="text-[11px] text-slate-400 font-mono-num">${tDone}/${members.length}</span>
-                    ${members.length ? `<button type="button" onclick="app.setTeamDone('${esc(team.id)}', ${!tComplete}, '${evId}', '${tid}')" class="px-2 py-1 text-[11px] font-bold rounded-lg border ${tComplete ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-emerald-900/30 border-emerald-700/50 text-emerald-300'}">${tComplete ? 'Clear' : 'All done'}</button>` : ''}
+                    <span class="text-[11px] font-mono-num ${groupMode && tComplete ? 'text-emerald-300 font-bold' : 'text-slate-400'}">${groupMode ? (tComplete ? 'Done' : 'Pending') : `${tDone}/${members.length}`}</span>
+                    ${members.length ? `<button type="button" onclick="app.setTeamDone('${esc(team.id)}', ${!tComplete}, '${evId}', '${tid}')" class="px-2 py-1 text-[11px] font-bold rounded-lg border ${tComplete ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-emerald-900/30 border-emerald-700/50 text-emerald-300'}">${groupMode ? (tComplete ? 'Not done' : 'Team done') : (tComplete ? 'Clear' : 'All done')}</button>` : ''}
                   </span>
                 </div>
                 ${rows || `<p class="px-3 py-2 border-t border-slate-800/70 text-xs text-slate-500">${!this.teamMembers(team).length ? 'No cadets in this team.' : !members.length ? 'Everyone in this team has a reason.' : `No ${yearF === 'none' ? 'cadets without a year' : yearF + ' year cadets'} in this team.`}</p>`}
@@ -3291,9 +3493,9 @@
                 <div class="min-w-0">
                   <h4 class="text-lg font-extrabold text-white leading-tight break-words">${esc(task.title)}</h4>
                   ${task.details ? `<p class="text-sm text-slate-300 mt-1 whitespace-pre-wrap break-words">${esc(task.details)}</p>` : ''}
-                  <p class="text-[11px] text-slate-500 mt-1.5">${dl ? `Deadline ${esc(this.formatDate(dl))}${task.deadline ? '' : ' (event)'} · ` : ''}${assigned.length ? esc(assigned.map(teamLabel).join(', ')) : 'Not given to any team'}</p>
+                  <p class="text-[11px] text-slate-500 mt-1.5">${groupMode ? '<span class="text-sky-300">Once per team</span> · ' : ''}${dl ? `Deadline ${esc(this.formatDate(dl))}${task.deadline ? '' : ' (event)'} · ` : ''}${assigned.length ? esc(assigned.map(teamLabel).join(', ')) : 'Not given to any team'}</p>
                 </div>
-                <span class="shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${complete ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50' : 'bg-slate-950 text-slate-400 border-slate-700'}">${complete ? 'Complete' : `${done}/${active.length} done`}</span>
+                <span class="shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded border ${complete ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50' : 'bg-slate-950 text-slate-400 border-slate-700'}">${complete ? 'Complete' : groupMode ? `${teamsDone}/${assigned.length} teams done` : `${done}/${active.length} done`}</span>
               </div>
               <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-1.5 rounded-full" style="width:${pct}%"></div></div>
               ${groups || '<p class="text-xs text-slate-500">Edit the task to give it to a team.</p>'}
@@ -3339,7 +3541,12 @@
         if (!tasks.length) { this.showToast(`${team.name} has no ${taskId ? 'such ' : ''}task.`); return; }
         const now = Date.now();
         let changed = 0;
-        tasks.forEach(task => this.teamMembers(team).forEach(c => {
+        tasks.forEach(task => isGroupTask(task) ? (() => {
+          if (!!task.teamDone?.[team.id]?.done === !!markDone) return;
+          if (!task.teamDone) task.teamDone = {};
+          task.teamDone[team.id] = markDone ? { done: true, completedAt: now } : { done: false, completedAt: null };
+          changed++;
+        })() : this.teamMembers(team).forEach(c => {
           const cur = this.peekRecord(c.id, ev, task.id);
           if (recordStatus(cur) === 'excused') return; // cadets with a reason are skipped
           if (!!cur.done === markDone) return;
@@ -3386,7 +3593,8 @@
         if (task.details) msg += `${task.details}\n`;
         const excused = [];
         (ev.teams || []).filter(t => (task.teamIds || []).includes(t.id)).forEach(team => {
-          msg += `\n*${team.name}*\n`;
+          msg += `\n*${team.name}*${isGroupTask(task) ? (task.teamDone?.[team.id]?.done ? ' – done' : ' – pending') : ''}\n`;
+          if (isGroupTask(task)) { this.teamMembers(team).forEach((c, i) => { msg += `${i + 1}. ${c.rank || 'CDT'} ${c.name} (${c.company})\n`; }); return; }
           let n = 0;
           this.teamMembers(team).forEach(c => {
             const rec = this.peekRecord(c.id, ev, task.id);
@@ -3422,6 +3630,7 @@
           dlInput.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
         } else { dlBox.checked = false; dlInput.classList.add('hidden'); dlInput.value = ''; }
         document.getElementById('specialTaskDeadlineHint').textContent = ev.deadline ? `Otherwise the event deadline (${this.formatDate(ev.deadline)}) applies.` : 'Optional.';
+        this.setCompletion('specialTaskCompletion', task?.completion);
         const chosen = new Set(task ? task.teamIds || [] : (teams.length === 1 ? [teams[0].id] : []));
         document.getElementById('specialTaskTeams').innerHTML = teams.map((t, i) => `
           <label class="flex items-center gap-2.5 px-3 py-2 rounded-lg border border-slate-800 bg-slate-950 hover:border-violet-600/60 cursor-pointer">
@@ -3467,7 +3676,15 @@
           const merged = mergeValue(d.base, { title, details, deadline, teamIds }, current);
           const keep = new Set((merged.teamIds || []).filter(id => validTeams.has(id)));
           const lost = Object.keys(task.records || {}).filter(cid => recordStatus(task.records[cid]) !== 'pending' && !keep.has(specialTeamOf(ev, cid)?.id));
-          if (lost.length && !confirm(`Save “${merged.title}”?\n\n${lost.length} cadet(s) in the teams taken off this task will lose their done mark / reason for it:\n   ${lost.map(nameOf).join(', ')}`)) return;
+          const completion = this.readCompletion('specialTaskCompletion');
+          const switching = completion !== (isGroupTask(task) ? 'group' : 'each');
+          if (switching && taskHasMarks(task) && !confirm(`Change how “${merged.title}” is done? Its current done marks${isGroupTask(task) ? '' : ' and reasons'} will be cleared.`)) return;
+          if (!switching && lost.length && !confirm(`Save “${merged.title}”?\n\n${lost.length} cadet(s) in the teams taken off this task will lose their done mark / reason for it:\n   ${lost.map(nameOf).join(', ')}`)) return;
+          if (switching) {
+            task.records = {};
+            delete task.teamDone;
+            if (completion === 'group') task.completion = 'group'; else delete task.completion;
+          }
           task.title = merged.title;
           if (merged.details) task.details = merged.details; else delete task.details;
           if (merged.deadline != null) task.deadline = merged.deadline; else delete task.deadline;
@@ -3477,6 +3694,7 @@
           this.showToast('Task saved.');
         } else {
           const task = { id: `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, title, teamIds, createdAt: Date.now(), records: {} };
+          if (this.readCompletion('specialTaskCompletion') === 'group') task.completion = 'group';
           if (details) task.details = details;
           if (deadline != null) task.deadline = deadline;
           ev.tasks.push(task);
@@ -3496,7 +3714,7 @@
         const ev = this.findEvent(eventId);
         const task = ev && ev.type === 'special' ? specialTasks(ev).find(t => t.id === taskId) : null;
         if (!task) return;
-        const marks = Object.values(task.records || {}).filter(r => recordStatus(r) !== 'pending').length;
+        const marks = Object.values(task.records || {}).filter(r => recordStatus(r) !== 'pending').length + Object.values(task.teamDone || {}).filter(g => g && g.done).length;
         if (!confirm(`Delete the task “${task.title}”?${marks ? `\n\nIts ${marks} done mark(s) / reason(s) will be removed too.` : ''}`)) return;
         ev.tasks = specialTasks(ev).filter(t => t.id !== taskId);
         this.logHistory('special-task-deleted', null, `Deleted task “${task.title}” from ${ev.title}${marks ? ` (${marks} marks removed)` : ''}`, ev.id);
@@ -3817,7 +4035,7 @@
       }
 
       backupAllData() {
-        const payload = { app: 'CadetFlow', schemaVersion: 2, exportedAt: new Date().toISOString(), cadets: this.state.cadets, events: this.state.events, activeEventId: this.state.activeEventId, history: this.state.history || [], duties: this.state.duties || [] };
+        const payload = { app: 'CadetFlow', schemaVersion: 2, exportedAt: new Date().toISOString(), cadets: this.state.cadets, events: this.state.events, activeEventId: this.state.activeEventId, history: this.state.history || [], duties: this.state.duties || [], uniform: this.state.uniform || [] };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob); const a = document.createElement('a');
         a.href = url; a.download = `CadetFlow_Backup_${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -3839,6 +4057,8 @@
             this.state.history = Array.isArray(data.history) ? data.history : [];
             this.state.duties = (Array.isArray(data.duties) ? data.duties : []).filter(d => d && d.id)
               .map(d => (d.by && String(d.by).includes('@')) ? { ...d, by: String(d.by).split('@')[0] } : d);
+            // Older backups have no uniform requests: keep the current ones rather than wiping them.
+            if (Array.isArray(data.uniform)) this.state.uniform = normalizeUniform(data.uniform);
             this.state.selectedCadets.clear();
             this.saveStorage(); this.renderEventDropdown(); this.renderAll(); renderOngoingTasks(); renderAvailabilityResults();
             this.showToast('Backup restored successfully.');
@@ -3984,7 +4204,7 @@
     //   missing       – not done, and the task is archived or past its deadline
     //   pending       – not done yet, task still open
     function taskOutcome(ev, cadet) {
-      const rec = ev.type === 'special' ? specialEventRecord(ev, cadet.id) : ((ev.records && ev.records[cadet.id]) || EMPTY_RECORD);
+      const rec = ev.type === 'special' ? specialEventRecord(ev, cadet.id) : normalRecord(ev, cadet.id);
       const status = recordStatus(rec);
       const deadline = toTime(ev.deadline);
       if (status === 'done' && ev.type === 'special') return rec.late ? 'late' : 'ontime';
@@ -4116,16 +4336,17 @@
       return out;
     }
     function mergeSharedState(base, local, remote) {
-      const pick = s => ({ cadets: s?.cadets || [], events: s?.events || [], history: s?.history || [], duties: s?.duties || [] });
+      const pick = s => ({ cadets: s?.cadets || [], events: s?.events || [], history: s?.history || [], duties: s?.duties || [], uniform: s?.uniform || [] });
       const merged = mergeValue(pick(base), pick(local), pick(remote));
       merged.duties = (merged.duties || []).sort((a, b) => (b.at || 0) - (a.at || 0));
+      merged.uniform = normalizeUniform(merged.uniform);
       merged.history = (merged.history || []).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3000);
       merged.events = (merged.events || []).map(ev => normalizeEvent(ev));
       return merged;
     }
     /** True when two saved states hold the same shared data (ignores which task is open). */
     function stateEqual(a, b) {
-      const pick = s => ({ cadets: s?.cadets, events: s?.events, history: s?.history, duties: s?.duties || [] });
+      const pick = s => ({ cadets: s?.cadets, events: s?.events, history: s?.history, duties: s?.duties || [], uniform: s?.uniform || [] });
       return deepEqual(pick(a), pick(b));
     }
 
@@ -4157,6 +4378,24 @@
       if (rec && rec.note && String(rec.note).trim()) return 'excused';
       return 'pending';
     }
+    // ---- How a task is completed: 'each' (every cadet is marked, default) or 'group'
+    // (the group does one thing together: one mark for a whole normal task, one per team for a special-event task).
+    function isGroupTask(x) { return !!x && x.completion === 'group'; }
+    function groupMark(g) { return g && g.done ? { done: true, note: '', completedAt: g.completedAt || null } : EMPTY_RECORD; }
+    /** A cadet's record on a normal task. */
+    function normalRecord(ev, cadetId) {
+      if (isGroupTask(ev)) return groupMark(ev.groupDone);
+      return (ev && ev.records && ev.records[cadetId]) || EMPTY_RECORD;
+    }
+    /** A cadet's record on one task of a special event. */
+    function taskRecord(ev, task, cadetId) {
+      if (!task) return EMPTY_RECORD;
+      if (isGroupTask(task)) { const team = specialTeamOf(ev, cadetId); return groupMark(team && task.teamDone && task.teamDone[team.id]); }
+      return (task.records && task.records[cadetId]) || EMPTY_RECORD;
+    }
+    function taskHasMarks(task) {
+      return Object.values(task.records || {}).some(r => recordStatus(r) !== 'pending') || Object.values(task.teamDone || {}).some(g => g && g.done);
+    }
     // ---- Special events: teams and tasks are separate; records are kept per task.
     function specialTasks(ev) { return ev && Array.isArray(ev.tasks) ? ev.tasks : []; }
     function specialTeamOf(ev, cadetId) { return (ev?.teams || []).find(t => (t.cadetIds || []).includes(cadetId)) || null; }
@@ -4173,7 +4412,7 @@
     function specialEventRecord(ev, cadetId) {
       const tasks = specialTasksFor(ev, cadetId);
       if (!tasks.length) return EMPTY_RECORD;
-      const pairs = tasks.map(t => [t, (t.records && t.records[cadetId]) || EMPTY_RECORD]);
+      const pairs = tasks.map(t => [t, taskRecord(ev, t, cadetId)]);
       const active = pairs.filter(([, r]) => recordStatus(r) !== 'excused');
       if (!active.length) return { done: false, note: [...new Set(pairs.map(([, r]) => String(r.note).trim()))].join('; '), completedAt: null };
       if (!active.every(([, r]) => r.done)) return EMPTY_RECORD;
@@ -4192,6 +4431,7 @@
         const recs = compactRecords(task.records);
         Object.keys(recs).forEach(cid => { if (!allowed.has(teamOf[cid])) delete recs[cid]; });
         task.records = recs;
+        if (task.teamDone) Object.keys(task.teamDone).forEach(tid => { if (!allowed.has(tid)) delete task.teamDone[tid]; });
       });
     }
     function compactRecords(records) {
@@ -4225,6 +4465,7 @@
         if (!r || (!r.done && !(r.note && String(r.note).trim()) && !r.completedAt)) delete ev.records[id];
       });
       // Years the task is limited to; left out entirely when it is for every year (keeps old data unchanged).
+      if (ev.completion !== undefined && ev.completion !== 'group') delete ev.completion;
       if (ev.type !== 'special' && ev.cadetIds !== undefined) {
         const ids = [...new Set((Array.isArray(ev.cadetIds) ? ev.cadetIds : []).filter(id => id != null).map(String))];
         if (ids.length) ev.cadetIds = ids; else delete ev.cadetIds;
@@ -4315,8 +4556,10 @@
     });
 
     function switchCadetFlowPage(page) {
-      const isHome = page === 'home'; const showAvailability = page === 'availability'; const showDirectory = page === 'directory';
-      const showTasks = !isHome && !showAvailability && !showDirectory;
+      const isHome = page === 'home'; const showAvailability = page === 'availability'; const showDirectory = page === 'directory'; const showUniform = page === 'uniform';
+      const showTasks = !isHome && !showAvailability && !showDirectory && !showUniform;
+      document.getElementById('uniformPage').classList.toggle('hidden', !showUniform);
+      document.getElementById('uniformTab').setAttribute('aria-selected', String(showUniform));
       document.getElementById('homePage').classList.toggle('hidden', !isHome);
       document.getElementById('moduleNav').classList.toggle('hidden', isHome);
       document.getElementById('moduleControls').classList.add('hidden');
@@ -4326,10 +4569,11 @@
       document.getElementById('rosterTab').setAttribute('aria-selected', String(showTasks));
       document.getElementById('availabilityTab').setAttribute('aria-selected', String(showAvailability));
       document.getElementById('directoryTab').setAttribute('aria-selected', String(showDirectory));
-      const navPage = isHome ? 'home' : showAvailability ? 'availability' : showDirectory ? 'directory' : 'roster';
+      const navPage = isHome ? 'home' : showAvailability ? 'availability' : showDirectory ? 'directory' : showUniform ? 'uniform' : 'roster';
       document.querySelectorAll('#phoneNav button').forEach(b => { if (b.dataset.page === navPage) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
       if (showAvailability) renderAvailabilityResults();
       if (showDirectory) renderRosterDirectory();
+      if (showUniform) renderUniformPage();
       if (showTasks) { document.getElementById('rosterPage').classList.remove('hidden'); showTaskMasterSection('home'); renderOngoingTasks(); }
       if (isHome && typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) document.getElementById('homeCadetCount').textContent = `${app.state.cadets.length} active cadets`;
     }
@@ -4610,6 +4854,328 @@
 
     // ==================== HOME FIGURES ====================
     /** Live numbers on the home rows: who is free this half, ongoing tasks, roster size. */
+    // ==================== UNIFORM REQUESTS (CQMS) ====================
+    // app.state.uniform: one entry per cadet per item.
+    //   status: requested → ordered (amount recorded) → received; paid tracks the money separately.
+    const UNIFORM_ITEMS = [
+      { key: 'hackle', label: 'Hackle' }, { key: 'beret', label: 'Beret' }, { key: 'nameplate', label: 'Nameplate' },
+      { key: 'ncc-badge', label: 'NCC badge' }, { key: 'camp-badge', label: 'Camp badge' }, { key: 'lanyard', label: 'Lanyard' },
+      { key: 'shoelace', label: 'Shoelace' }, { key: 'socks', label: 'Socks' }, { key: 'belt', label: 'Belt' },
+      { key: 'custom', label: 'Something else' }
+    ];
+    const UNIFORM_STATUS = ['requested', 'ordered', 'received'];
+    function normalizeUniform(list) {
+      if (!Array.isArray(list)) return [];
+      const seen = new Set();
+      return list.filter(r => r && r.id && r.cadetId && !seen.has(r.id) && seen.add(r.id)).map(r => {
+        const out = { ...r, status: UNIFORM_STATUS.includes(r.status) ? r.status : 'requested', qty: Math.min(99, Math.max(1, parseInt(r.qty, 10) || 1)) };
+        if (!UNIFORM_ITEMS.some(i => i.key === out.item)) { out.custom = String(out.custom || out.item || 'Other item'); out.item = 'custom'; }
+        if (out.amount != null && !(Number.isFinite(Number(out.amount)) && Number(out.amount) >= 0)) delete out.amount;
+        else if (out.amount != null) out.amount = Number(out.amount);
+        return out;
+      }).sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
+    }
+    function uniformLabel(r) { return r.item === 'custom' ? (String(r.custom || '').trim() || 'Other item') : (UNIFORM_ITEMS.find(i => i.key === r.item)?.label || r.item); }
+    /** Requests for the same thing group together (custom items by their name). */
+    function uniformKey(r) { return r.item === 'custom' ? 'custom:' + uniformLabel(r).toLowerCase() : r.item; }
+    function rupees(n) { return '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+    const UNI = { status: 'open', item: 'all', company: 'all', q: '', ticked: new Set(), pick: new Set(), items: new Set() };
+    function uniformRequests() { return (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.uniform)) ? app.state.uniform : []; }
+    function uniformCadet(id) { return (typeof app !== 'undefined' && app && app.state ? app.state.cadets : []).find(c => c.id === id) || null; }
+    function uniformCadetName(id) { const c = uniformCadet(id); return c ? `${c.rank || 'CDT'} ${c.name}` : 'Removed cadet'; }
+
+    function renderUniformPage() {
+      const page = document.getElementById('uniformPage');
+      renderUniformHomeStat();
+      if (!page || page.classList.contains('hidden') || typeof app === 'undefined' || !app || !app.state) return;
+      const signedIn = !!app.user;
+      document.getElementById('uniformLocked').classList.toggle('hidden', signedIn);
+      document.getElementById('uniformContent').classList.toggle('hidden', !signedIn);
+      document.getElementById('uniformViewOnly').classList.toggle('hidden', !signedIn || app.canEdit());
+      if (!signedIn) return;
+      if (app.canEdit()) { renderUniformPicker(); renderUniformItemChips(); }
+      renderUniformSummary();
+      renderUniformList();
+    }
+    function renderUniformHomeStat() {
+      const el = document.getElementById('homeStatUniform'); if (!el) return;
+      const n = uniformRequests().filter(r => r.status === 'requested').length;
+      el.innerHTML = `<b>${n}</b><small>${n === 1 ? 'item to order' : 'items to order'}</small>`;
+    }
+
+    // ---- New request: pick cadets and items
+    function renderUniformPicker() {
+      const host = document.getElementById('uniPickList'); if (!host) return;
+      const q = document.getElementById('uniPickSearch').value.toLowerCase().trim();
+      const coy = document.getElementById('uniPickCoy').value, year = document.getElementById('uniPickYear').value;
+      const cadets = app.state.cadets;
+      [...UNI.pick].forEach(id => { if (!cadets.some(c => c.id === id)) UNI.pick.delete(id); });
+      const list = cadets.filter(c => (coy === 'all' || c.company === coy) && yearMatches(c, year) && (!q || c.name.toLowerCase().includes(q) || (c.rank || '').toLowerCase().includes(q)));
+      host.innerHTML = list.length ? list.map(c => {
+        const open = uniformRequests().filter(r => r.cadetId === c.id && r.status !== 'received').map(uniformLabel);
+        return `<label class="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-slate-900 ${UNI.pick.has(c.id) ? 'bg-amber-950/20' : ''}">
+          <input type="checkbox" class="cadet-cb shrink-0" value="${escapeHtml(c.id)}" ${UNI.pick.has(c.id) ? 'checked' : ''} onchange="toggleUniformCadet(this.value, this.checked, this)">
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-white truncate">${escapeHtml(c.rank || 'CDT')} ${escapeHtml(c.name)}</span>
+          <span class="block text-[11px] text-slate-500 truncate">${escapeHtml(c.company)} · ${escapeHtml(yearLabel(c.year))}${open.length ? ` · <span class="text-amber-300">already waiting: ${escapeHtml(open.join(', '))}</span>` : ''}</span></span>
+        </label>`;
+      }).join('') : '<p class="p-4 text-center text-xs text-slate-500">No cadets match.</p>';
+      updateUniformNewSummary();
+    }
+    function toggleUniformCadet(id, on, el) {
+      if (on) UNI.pick.add(id); else UNI.pick.delete(id);
+      el?.closest('label')?.classList.toggle('bg-amber-950/20', on);
+      updateUniformNewSummary();
+    }
+    function renderUniformItemChips() {
+      const host = document.getElementById('uniItemChips'); if (!host) return;
+      host.innerHTML = UNIFORM_ITEMS.map(i => `<button type="button" class="af-chip text-xs" aria-pressed="${UNI.items.has(i.key)}" onclick="toggleUniformItem('${i.key}')">${escapeHtml(i.label)}</button>`).join('');
+      document.getElementById('uniCustom').classList.toggle('hidden', !UNI.items.has('custom'));
+      updateUniformNewSummary();
+    }
+    function toggleUniformItem(key) {
+      if (UNI.items.has(key)) UNI.items.delete(key); else UNI.items.add(key);
+      renderUniformItemChips();
+      if (key === 'custom' && UNI.items.has('custom')) document.getElementById('uniCustom').focus();
+    }
+    function updateUniformNewSummary() {
+      const n = UNI.pick.size, k = UNI.items.size;
+      const count = document.getElementById('uniPickCount');
+      if (count) { count.textContent = n ? `${n} cadet${n === 1 ? '' : 's'} picked` : 'No cadet picked'; count.className = `text-[11px] font-bold ${n ? 'text-amber-400' : 'text-slate-500'}`; }
+      const sum = document.getElementById('uniNewSummary');
+      if (sum) sum.textContent = n && k ? `${n * k} request${n * k === 1 ? '' : 's'} will be added.` : 'Pick cadets and items.';
+    }
+    function createUniformRequests() {
+      if (!app.canEdit()) { app.showToast('Only approved CadetFlow editors can make uniform requests.'); return; }
+      const cadets = app.state.cadets.filter(c => UNI.pick.has(c.id));
+      const items = UNIFORM_ITEMS.filter(i => UNI.items.has(i.key)).map(i => i.key);
+      const custom = document.getElementById('uniCustom').value.trim();
+      const qty = parseInt(document.getElementById('uniQty').value, 10);
+      const note = document.getElementById('uniNote').value.trim();
+      if (!cadets.length) { app.showToast('Pick at least one cadet.'); return; }
+      if (!items.length) { app.showToast('Pick at least one item.'); return; }
+      if (items.includes('custom') && !custom) { app.showToast('Write what the other item is.'); document.getElementById('uniCustom').focus(); return; }
+      if (!(qty >= 1 && qty <= 20)) { app.showToast('Quantity must be between 1 and 20.'); return; }
+      if (!Array.isArray(app.state.uniform)) app.state.uniform = [];
+      const now = Date.now(), by = app.authorName();
+      let added = 0, skipped = 0;
+      cadets.forEach(c => items.forEach(item => {
+        const draft = { item, ...(item === 'custom' ? { custom } : {}) };
+        // Don't ask twice for something the cadet is still waiting for.
+        if (app.state.uniform.some(r => r.cadetId === c.id && r.status !== 'received' && uniformKey(r) === uniformKey(draft))) { skipped++; return; }
+        app.state.uniform.unshift({ id: `uni-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, cadetId: c.id, ...draft, qty, ...(note ? { note } : {}), status: 'requested', requestedAt: now, requestedBy: by });
+        added++;
+      }));
+      if (added) {
+        app.logHistory('uniform-requested', null, `Uniform request: ${items.map(k => k === 'custom' ? custom : UNIFORM_ITEMS.find(i => i.key === k).label).join(', ')} for ${cadets.length} cadet(s)`);
+        app.saveStorage();
+      }
+      UNI.pick.clear(); UNI.items.clear();
+      document.getElementById('uniCustom').value = ''; document.getElementById('uniNote').value = ''; document.getElementById('uniQty').value = '1';
+      renderUniformPage();
+      app.showToast(added ? `Added ${added} request${added === 1 ? '' : 's'}${skipped ? ` (${skipped} already waiting, skipped)` : ''}.` : 'Those cadets are already waiting for those items.');
+    }
+
+    // ---- What's needed + money
+    function renderUniformSummary() {
+      const host = document.getElementById('uniSummary'); if (!host) return;
+      const groups = new Map();
+      uniformRequests().forEach(r => {
+        if (r.status === 'received') return;
+        const k = uniformKey(r);
+        const g = groups.get(k) || { key: k, label: uniformLabel(r), requested: 0, ordered: 0, people: 0 };
+        if (r.status === 'requested') { g.requested += r.qty || 1; g.people++; } else g.ordered += r.qty || 1;
+        groups.set(k, g);
+      });
+      const list = [...groups.values()].sort((a, b) => b.requested - a.requested || a.label.localeCompare(b.label));
+      host.innerHTML = list.length ? list.map(g => `<button type="button" data-key="${escapeHtml(g.key)}" onclick="setUniformFilter('item', UNI.item === this.dataset.key ? 'all' : this.dataset.key)" class="text-left rounded-xl border ${UNI.item === g.key ? 'border-amber-500' : 'border-slate-800'} bg-slate-950 p-3 hover:border-amber-600/70">
+          <span class="block text-xs font-bold text-slate-300 truncate">${escapeHtml(g.label)}</span>
+          <span class="block mt-1"><b class="text-xl font-black ${g.requested ? 'text-amber-400' : 'text-slate-500'} font-mono-num">${g.requested}</b> <span class="text-[11px] text-slate-500">to order${g.requested ? ` · ${g.people} cadet${g.people === 1 ? '' : 's'}` : ''}</span></span>
+          ${g.ordered ? `<span class="block text-[11px] text-sky-300 mt-0.5">${g.ordered} ordered, not received</span>` : ''}
+        </button>`).join('') : '<p class="col-span-full text-sm text-slate-500">Nothing waiting. New requests show up here.</p>';
+      const priced = uniformRequests().filter(r => r.amount != null);
+      const total = priced.reduce((s, r) => s + r.amount, 0), paid = priced.filter(r => r.paid).reduce((s, r) => s + r.amount, 0);
+      const noAmount = uniformRequests().filter(r => r.status !== 'requested' && r.amount == null).length;
+      document.getElementById('uniMoney').innerHTML = `<span>Ordered value <b class="text-slate-200">${rupees(total)}</b></span><span>Paid <b class="text-emerald-300">${rupees(paid)}</b></span><span>Still to collect <b class="${total - paid > 0 ? 'text-rose-300' : 'text-slate-200'}">${rupees(total - paid)}</b></span>${noAmount ? `<span class="text-amber-300">${noAmount} ordered without an amount</span>` : ''}`;
+    }
+
+    // ---- Request list
+    function setUniformFilter(key, value) {
+      UNI[key] = value;
+      if (key === 'item' || key === 'status' || key === 'company') renderUniformSummary();
+      renderUniformList();
+    }
+    function uniformShown() {
+      const q = UNI.q.toLowerCase().trim();
+      return uniformRequests().filter(r => {
+        const c = uniformCadet(r.cadetId);
+        if (UNI.status === 'open' && r.status === 'received') return false;
+        if (['requested', 'ordered', 'received'].includes(UNI.status) && r.status !== UNI.status) return false;
+        if (UNI.status === 'unpaid' && !(r.amount != null && !r.paid)) return false;
+        if (UNI.item !== 'all' && uniformKey(r) !== UNI.item) return false;
+        if (UNI.company !== 'all' && c?.company !== UNI.company) return false;
+        if (q && !uniformCadetName(r.cadetId).toLowerCase().includes(q) && !uniformLabel(r).toLowerCase().includes(q)) return false;
+        return true;
+      });
+    }
+    function renderUniformList() {
+      const host = document.getElementById('uniList'); if (!host) return;
+      document.querySelectorAll('#uniFilters .af-chip').forEach(b => b.setAttribute('aria-pressed', String(UNI[b.dataset.uf] === b.dataset.val)));
+      // Item filter options: everything that has been requested
+      const sel = document.getElementById('uniItemFilter');
+      const keys = new Map(uniformRequests().map(r => [uniformKey(r), uniformLabel(r)]));
+      if (UNI.item !== 'all' && !keys.has(UNI.item)) UNI.item = 'all';
+      sel.innerHTML = '<option value="all">All items</option>' + [...keys].sort((a, b) => a[1].localeCompare(b[1])).map(([k, l]) => `<option value="${escapeHtml(k)}">${escapeHtml(l)}</option>`).join('');
+      sel.value = UNI.item;
+      document.getElementById('uniCoyFilter').value = UNI.company;
+      const ids = new Set(uniformRequests().map(r => r.id));
+      [...UNI.ticked].forEach(id => { if (!ids.has(id)) UNI.ticked.delete(id); });
+      const shown = uniformShown();
+      document.getElementById('uniCount').textContent = shown.length === uniformRequests().length ? uniformRequests().length : `${shown.length} of ${uniformRequests().length}`;
+      const pill = { requested: 'bg-amber-900/30 text-amber-300 border-amber-700/50', ordered: 'bg-sky-900/30 text-sky-300 border-sky-700/50', received: 'bg-emerald-900/30 text-emerald-300 border-emerald-700/50' };
+      const btn = 'px-2.5 py-1 text-[11px] font-bold rounded-lg border';
+      host.innerHTML = shown.length ? shown.map(r => {
+        const c = uniformCadet(r.cadetId), id = escapeHtml(r.id);
+        const trail = [`requested ${app.formatDate(r.requestedAt)}${r.requestedBy ? ' by ' + r.requestedBy : ''}`];
+        if (r.orderedAt) trail.push(`ordered ${app.formatDate(r.orderedAt)}`);
+        if (r.receivedAt) trail.push(`received ${app.formatDate(r.receivedAt)}`);
+        const next = r.status === 'requested' ? `<button type="button" onclick="markUniformOrdered(['${id}'])" class="${btn} bg-sky-900/40 border-sky-700/60 text-sky-200">Mark ordered</button>`
+          : r.status === 'ordered' ? `<button type="button" onclick="markUniformReceived(['${id}'])" class="${btn} bg-emerald-900/40 border-emerald-700/60 text-emerald-200">Mark received</button>` : '';
+        return `<div class="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2.5 ${UNI.ticked.has(r.id) ? 'bg-amber-950/20' : ''}">
+          <div class="flex items-start gap-2.5 min-w-0 flex-1">
+            <input type="checkbox" class="uni-edit cadet-cb mt-0.5 shrink-0" ${UNI.ticked.has(r.id) ? 'checked' : ''} onchange="toggleUniformTick('${id}', this.checked)" aria-label="Tick request">
+            <div class="min-w-0">
+              <p class="text-sm text-white"><b class="font-bold">${escapeHtml(uniformLabel(r))}</b>${r.qty > 1 ? ` <span class="text-slate-400">×${r.qty}</span>` : ''} <span class="text-slate-500">·</span> <span class="font-semibold">${escapeHtml(uniformCadetName(r.cadetId))}</span></p>
+              <p class="text-[11px] text-slate-500">${c ? `${escapeHtml(c.company)} · ${escapeHtml(yearLabel(c.year))} · ` : ''}${r.note ? `<span class="text-slate-300">${escapeHtml(r.note)}</span> · ` : ''}${escapeHtml(trail.join(' · '))}</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 sm:justify-end pl-7 sm:pl-0">
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${pill[r.status]}">${r.status[0].toUpperCase() + r.status.slice(1)}</span>
+            ${r.amount != null ? `<button type="button" onclick="toggleUniformPaid('${id}')" class="${btn} ${r.paid ? 'bg-emerald-900/30 border-emerald-700/50 text-emerald-300' : 'bg-rose-950/30 border-rose-800/60 text-rose-300'}" title="Click to change">${rupees(r.amount)} · ${r.paid ? 'paid' : 'not paid'}</button>` : ''}
+            <span class="uni-edit contents">
+              ${next}
+              ${r.status !== 'requested' ? `<button type="button" onclick="setUniformAmount('${id}')" class="${btn} bg-slate-800 border-slate-700 text-slate-300">${r.amount != null ? 'Amount' : 'Add amount'}</button>` : ''}
+              ${r.status !== 'requested' ? `<button type="button" onclick="undoUniformStep('${id}')" class="${btn} bg-slate-900 border-slate-800 text-slate-400" title="Move back one step">Undo</button>` : ''}
+              <button type="button" onclick="deleteUniformRequests(['${id}'])" class="${btn} border-rose-900/60 text-rose-300" aria-label="Delete request">Delete</button>
+            </span>
+          </div>
+        </div>`;
+      }).join('') : `<p class="p-6 text-center text-sm text-slate-500">${uniformRequests().length ? 'No requests match these filters.' : 'No uniform requests yet.'}</p>`;
+      document.getElementById('uniBulk').classList.toggle('hidden', !UNI.ticked.size);
+      document.getElementById('uniBulkCount').textContent = UNI.ticked.size;
+    }
+    function toggleUniformTick(id, on) { if (on) UNI.ticked.add(id); else UNI.ticked.delete(id); renderUniformList(); }
+    function uniformTickAll() {
+      const ids = uniformShown().map(r => r.id);
+      const all = ids.length && ids.every(id => UNI.ticked.has(id));
+      ids.forEach(id => all ? UNI.ticked.delete(id) : UNI.ticked.add(id));
+      renderUniformList();
+    }
+    function uniformClearTicks() { UNI.ticked.clear(); renderUniformList(); }
+
+    // ---- Status changes (editors only)
+    function uniformFind(ids) { return uniformRequests().filter(r => ids.includes(r.id)); }
+    function uniformSave(action, details) {
+      app.logHistory(action, null, details);
+      app.saveStorage();
+      renderUniformPage();
+    }
+    /** Ask for an amount in rupees. Returns undefined when cancelled, null for "no amount", or a number. */
+    function askAmount(message, current) {
+      const raw = prompt(message, current != null ? String(current) : '');
+      if (raw === null) return undefined;
+      const t = raw.replace(/[₹,\s]/g, '');
+      if (!t) return null;
+      const n = Number(t);
+      if (!Number.isFinite(n) || n < 0) { app.showToast('Enter the amount as a number, e.g. 350'); return undefined; }
+      return Math.round(n * 100) / 100;
+    }
+    function markUniformOrdered(ids) {
+      if (!app.canEdit()) { app.showToast('Only approved CadetFlow editors can update requests.'); return; }
+      const list = uniformFind(ids).filter(r => r.status === 'requested');
+      if (!list.length) { app.showToast('Nothing to mark ordered (already ordered or received).'); return; }
+      const amount = askAmount(list.length === 1
+        ? `Amount for ${uniformLabel(list[0])}${list[0].qty > 1 ? ' ×' + list[0].qty : ''} for ${uniformCadetName(list[0].cadetId)} (₹).\nLeave blank to add it later.`
+        : `Amount for EACH of the ${list.length} requests (₹).\nLeave blank to add amounts later.`);
+      if (amount === undefined) return;
+      const now = Date.now();
+      list.forEach(r => { r.status = 'ordered'; r.orderedAt = now; r.orderedBy = app.authorName(); if (amount != null) r.amount = amount; });
+      UNI.ticked.clear();
+      uniformSave('uniform-ordered', `Uniform ordered: ${list.length === 1 ? `${uniformLabel(list[0])} for ${uniformCadetName(list[0].cadetId)}` : `${list.length} requests`}${amount != null ? ` (${rupees(amount)} each)` : ''}`);
+      app.showToast(`Marked ${list.length} ordered.`);
+    }
+    function markUniformReceived(ids) {
+      if (!app.canEdit()) { app.showToast('Only approved CadetFlow editors can update requests.'); return; }
+      const list = uniformFind(ids).filter(r => r.status !== 'received');
+      if (!list.length) { app.showToast('Already received.'); return; }
+      const notOrdered = list.filter(r => r.status === 'requested').length;
+      if (notOrdered && !confirm(`${notOrdered} of these were never marked ordered. Mark them received anyway?`)) return;
+      const now = Date.now();
+      list.forEach(r => { if (!r.orderedAt) r.orderedAt = now; r.status = 'received'; r.receivedAt = now; });
+      UNI.ticked.clear();
+      uniformSave('uniform-received', `Uniform received: ${list.length === 1 ? `${uniformLabel(list[0])} for ${uniformCadetName(list[0].cadetId)}` : `${list.length} requests`}`);
+      app.showToast(`Marked ${list.length} received.`);
+    }
+    function setUniformAmount(id) {
+      if (!app.canEdit()) return;
+      const r = uniformFind([id])[0]; if (!r) return;
+      const amount = askAmount(`Amount for ${uniformLabel(r)}${r.qty > 1 ? ' ×' + r.qty : ''} for ${uniformCadetName(r.cadetId)} (₹). Leave blank to remove it.`, r.amount);
+      if (amount === undefined) return;
+      if (amount == null) { delete r.amount; delete r.paid; } else r.amount = amount;
+      uniformSave('uniform-amount', `Uniform amount: ${uniformLabel(r)} for ${uniformCadetName(r.cadetId)} → ${amount == null ? 'none' : rupees(amount)}`);
+    }
+    function toggleUniformPaid(id) {
+      if (!app.canEdit()) { app.showToast('Only approved CadetFlow editors can update payments.'); return; }
+      const r = uniformFind([id])[0]; if (!r || r.amount == null) return;
+      r.paid = !r.paid;
+      uniformSave('uniform-paid', `Uniform ${r.paid ? 'paid' : 'marked not paid'}: ${uniformLabel(r)} for ${uniformCadetName(r.cadetId)} (${rupees(r.amount)})`);
+    }
+    function undoUniformStep(id) {
+      if (!app.canEdit()) return;
+      const r = uniformFind([id])[0]; if (!r || r.status === 'requested') return;
+      const back = r.status === 'received' ? 'ordered' : 'requested';
+      if (!confirm(`Move ${uniformLabel(r)} for ${uniformCadetName(r.cadetId)} back to “${back}”?${back === 'requested' && r.amount != null ? ' Its amount stays recorded.' : ''}`)) return;
+      r.status = back;
+      if (back === 'ordered') delete r.receivedAt; else delete r.orderedAt;
+      uniformSave('uniform-undo', `Uniform request moved back to ${back}: ${uniformLabel(r)} for ${uniformCadetName(r.cadetId)}`);
+    }
+    function deleteUniformRequests(ids) {
+      if (!app.canEdit()) return;
+      const list = uniformFind(ids); if (!list.length) return;
+      if (!confirm(list.length === 1 ? `Delete the request for ${uniformLabel(list[0])} (${uniformCadetName(list[0].cadetId)})?` : `Delete ${list.length} requests?`)) return;
+      const gone = new Set(list.map(r => r.id));
+      app.state.uniform = uniformRequests().filter(r => !gone.has(r.id));
+      list.forEach(r => UNI.ticked.delete(r.id));
+      uniformSave('uniform-deleted', `Deleted ${list.length} uniform request(s)`);
+    }
+    function uniformBulk(action) {
+      const ids = [...UNI.ticked];
+      if (!ids.length) return;
+      if (action === 'ordered') markUniformOrdered(ids);
+      else if (action === 'received') markUniformReceived(ids);
+      else if (action === 'delete') deleteUniformRequests(ids);
+      else if (action === 'paid') {
+        if (!app.canEdit()) return;
+        const list = uniformFind(ids).filter(r => r.amount != null && !r.paid);
+        if (!list.length) { app.showToast('None of these have an unpaid amount.'); return; }
+        list.forEach(r => { r.paid = true; });
+        UNI.ticked.clear();
+        uniformSave('uniform-paid', `Uniform marked paid: ${list.length} requests`);
+        app.showToast(`Marked ${list.length} paid.`);
+      }
+    }
+    /** WhatsApp text of everything requested and not yet ordered, item by item. */
+    function copyUniformOrderList() {
+      const groups = new Map();
+      uniformRequests().filter(r => r.status === 'requested').forEach(r => { const k = uniformKey(r); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+      if (!groups.size) { app.showToast('Nothing waiting to be ordered.'); return; }
+      let msg = '*Uniform order list*\n';
+      [...groups.values()].sort((a, b) => uniformLabel(a[0]).localeCompare(uniformLabel(b[0]))).forEach(list => {
+        const total = list.reduce((s, r) => s + (r.qty || 1), 0);
+        msg += `\n*${uniformLabel(list[0])}* – ${total}\n`;
+        list.forEach((r, i) => { const c = uniformCadet(r.cadetId); msg += `${i + 1}. ${uniformCadetName(r.cadetId)}${c ? ` (${c.company})` : ''}${r.qty > 1 ? ` ×${r.qty}` : ''}${r.note ? ` – ${r.note}` : ''}\n`; });
+      });
+      app.copyToClipboard(msg, `Copied order list (${groups.size} item${groups.size === 1 ? '' : 's'})`);
+    }
     function renderHomeStats() {
       const cadets = (typeof app !== 'undefined' && app && app.state && Array.isArray(app.state.cadets)) ? app.state.cadets : [];
       const set = (id, n, label) => { const el = document.getElementById(id); if (el) el.innerHTML = `<b>${n}</b><small>${label}</small>`; };
@@ -4624,6 +5190,7 @@
       const ongoing = (typeof app !== 'undefined' && app && app.state ? app.state.events || [] : []).filter(ev => !ev.archived).length;
       set('homeStatTasks', ongoing, ongoing === 1 ? 'ongoing task' : 'ongoing tasks');
       set('homeStatRoster', cadets.length, cadets.length === 1 ? 'cadet' : 'cadets');
+      renderUniformHomeStat();
     }
 
     // ==================== MOTION ====================
